@@ -190,7 +190,7 @@ namespace UniTexEditor
             }
             
             // リサイズ用のRenderTextureを作成
-            RenderTexture resizedRT = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.RGBA32);
+            RenderTexture resizedRT = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.ARGB32);
             Graphics.Blit(result, resizedRT);
             
             Texture2D resizedTex = RenderTextureToTexture2D(resizedRT);

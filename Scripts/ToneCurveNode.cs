@@ -93,7 +93,11 @@ namespace UniTexEditor
             }
             else
             {
+                // マスクがない場合はダミーテクスチャを設定
+                RenderTexture dummyMask = RenderTexture.GetTemporary(1, 1, 0, RenderTextureFormat.RFloat);
+                toneCurveShader.SetTexture(kernelIndex, "Mask", dummyMask);
                 toneCurveShader.SetInt("UseMask", 0);
+                RenderTexture.ReleaseTemporary(dummyMask);
             }
             
             // カーブバッファをセット

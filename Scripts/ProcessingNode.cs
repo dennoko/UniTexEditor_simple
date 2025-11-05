@@ -81,6 +81,7 @@ namespace UniTexEditor
             // パラメータをセット
             colorCorrectionShader.SetTexture(kernelIndex, "Source", source);
             colorCorrectionShader.SetTexture(kernelIndex, "Result", tempRT);
+            
             if (mask != null)
             {
                 colorCorrectionShader.SetTexture(kernelIndex, "Mask", mask);
@@ -88,7 +89,11 @@ namespace UniTexEditor
             }
             else
             {
+                // マスクがない場合はダミーテクスチャを設定（Compute Shaderのエラー回避）
+                RenderTexture dummyMask = RenderTexture.GetTemporary(1, 1, 0, RenderTextureFormat.RFloat);
+                colorCorrectionShader.SetTexture(kernelIndex, "Mask", dummyMask);
                 colorCorrectionShader.SetInt("UseMask", 0);
+                RenderTexture.ReleaseTemporary(dummyMask);
             }
             
             colorCorrectionShader.SetFloat("HueShift", hueShift);
@@ -188,7 +193,11 @@ namespace UniTexEditor
             }
             else
             {
+                // マスクがない場合はダミーテクスチャを設定
+                RenderTexture dummyMask = RenderTexture.GetTemporary(1, 1, 0, RenderTextureFormat.RFloat);
+                blendShader.SetTexture(kernelIndex, "Mask", dummyMask);
                 blendShader.SetInt("UseMask", 0);
+                RenderTexture.ReleaseTemporary(dummyMask);
             }
             
             blendShader.SetInt("BlendMode", (int)blendMode);

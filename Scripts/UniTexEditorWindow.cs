@@ -76,6 +76,13 @@ namespace UniTexEditor
         private void OnDisable()
         {
             processor?.Cleanup();
+            
+            // プレビューテクスチャもクリーンアップ
+            if (resultPreview != null)
+            {
+                DestroyImmediate(resultPreview);
+                resultPreview = null;
+            }
         }
         
         private void OnGUI()
@@ -295,17 +302,21 @@ namespace UniTexEditor
                 
                 Rect previewRect = GUILayoutUtility.GetRect(displayWidth, displayHeight, GUILayout.ExpandWidth(false));
                 
+                // 背景（チェッカーボード）を描画
                 if (Event.current.type == EventType.Repaint)
                 {
-                    // 背景（チェッカーボード）を描画
                     DrawCheckerboard(previewRect);
-                    
-                    // プレビューを描画
-                    GUI.DrawTexture(previewRect, resultPreview, ScaleMode.ScaleToFit, true);
                 }
+                
+                // プレビューを描画（alphaBlend=trueで透明度対応）
+                GUI.DrawTexture(previewRect, resultPreview, ScaleMode.ScaleToFit, true);
                 
                 GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
+            }
+            else if (sourceTexture != null)
+            {
+                EditorGUILayout.HelpBox("プレビューを生成中... パラメータを調整してください。", MessageType.Info);
             }
             
             EditorGUILayout.Space();
@@ -383,6 +394,8 @@ namespace UniTexEditor
             // ノードをクリアして再構築
             processor.ClearNodes();
             
+            bool hasNodes = false;
+            
             // 色調補正ノードを追加
             if (showColorCorrection && (hueShift != 0 || saturation != 1f || brightness != 1f || gamma != 1f))
             {
@@ -394,6 +407,7 @@ namespace UniTexEditor
                     gamma = gamma
                 };
                 processor.AddNode(colorNode);
+                hasNodes = true;
             }
             
             // ブレンドノードを追加
@@ -407,6 +421,7 @@ namespace UniTexEditor
                     hdrColor = hdrColor
                 };
                 processor.AddNode(blendNode);
+                hasNodes = true;
             }
             
             // UVブラーノードを追加
@@ -419,6 +434,7 @@ namespace UniTexEditor
                     blurSigma = blurSigma
                 };
                 processor.AddNode(uvBlurNode);
+                hasNodes = true;
             }
             
             // トーンカーブノードを追加
@@ -436,25 +452,89 @@ namespace UniTexEditor
                     useBlueCurve = useBlueCurve
                 };
                 processor.AddNode(toneCurveNode);
+                hasNodes = true;
             }
             
             // プレビューを生成（Texture2Dとしてコピー）
             // パフォーマンスのため512x512に制限
             try
             {
-                Texture2D result = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION);
+                Texture2D result;
+                
+                if (hasNodes)
+                {
+                    // ノードがある場合は処理を実行
+                    result = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION);
+                }
+                else
+                {
+                    // ノードがない場合はソーステクスチャをそのまま使用（リサイズのみ）
+                    result = ResizeTexture(sourceTexture, PREVIEW_RESOLUTION);
+                }
+                
                 if (result != null)
                 {
                     resultPreview = result;
+                    Debug.Log($"プレビュー生成成功: {result.width}x{result.height}, format={result.format}, hasNodes={hasNodes}");
+                }
+                else
+                {
+                    Debug.LogWarning("プレビュー生成結果がnullです");
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"プレビュー生成エラー: {e.Message}");
+                Debug.LogError($"プレビュー生成エラー: {e.Message}\n{e.StackTrace}");
             }
             
             // UIを再描画
             Repaint();
+        }
+        
+        /// <summary>
+        /// テクスチャをリサイズ（アスペクト比維持）
+        /// </summary>
+        private Texture2D ResizeTexture(Texture2D source, int maxResolution)
+        {
+            if (source == null) return null;
+            
+            // 元の解像度が小さければそのまま
+            if (source.width <= maxResolution && source.height <= maxResolution)
+            {
+                // コピーを作成
+                Texture2D copy = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false);
+                Graphics.CopyTexture(source, copy);
+                return copy;
+            }
+            
+            // リサイズが必要な場合
+            int newWidth, newHeight;
+            float aspect = (float)source.width / source.height;
+            
+            if (source.width > source.height)
+            {
+                newWidth = maxResolution;
+                newHeight = Mathf.RoundToInt(maxResolution / aspect);
+            }
+            else
+            {
+                newHeight = maxResolution;
+                newWidth = Mathf.RoundToInt(maxResolution * aspect);
+            }
+            
+            // RenderTextureを使ってリサイズ
+            RenderTexture rt = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(source, rt);
+            
+            RenderTexture.active = rt;
+            Texture2D resized = new Texture2D(newWidth, newHeight, TextureFormat.RGBA32, false);
+            resized.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
+            resized.Apply();
+            RenderTexture.active = null;
+            
+            RenderTexture.ReleaseTemporary(rt);
+            
+            return resized;
         }
         
         private void ApplyAndSave()
