@@ -59,6 +59,7 @@ namespace UniTexEditor
         private Vector2 scrollPosition;
         private Vector2 previewScrollPosition;
         private const float PREVIEW_MAX_SIZE = 512f; // プレビュー最大サイズ
+        private const int PREVIEW_RESOLUTION = 512; // プレビュー計算解像度
         
         [MenuItem("Window/UniTex Editor")]
         public static void ShowWindow()
@@ -268,51 +269,43 @@ namespace UniTexEditor
                 EditorGUILayout.Space();
                 GUILayout.Label($"プレビュー ({resultPreview.width}x{resultPreview.height})", EditorStyles.miniLabel);
                 
-                // 表示可能領域を取得
-                float availableWidth = EditorGUIUtility.currentViewWidth - 40f;
-                float maxSize = Mathf.Min(PREVIEW_MAX_SIZE, availableWidth);
-                
-                // アスペクト比を維持しつつ、正方形の表示領域を確保
-                float previewSize = maxSize;
-                
-                // テクスチャのアスペクト比を計算
+                // 表示サイズを計算（アスペクト比を維持）
                 float textureAspect = (float)resultPreview.width / resultPreview.height;
                 float displayWidth, displayHeight;
                 
+                float availableWidth = EditorGUIUtility.currentViewWidth - 40f;
+                float maxDisplaySize = Mathf.Min(PREVIEW_MAX_SIZE, availableWidth);
+                
                 if (textureAspect > 1f)
                 {
-                    // 横長のテクスチャ
-                    displayWidth = previewSize;
-                    displayHeight = previewSize / textureAspect;
+                    // 横長
+                    displayWidth = maxDisplaySize;
+                    displayHeight = maxDisplaySize / textureAspect;
                 }
                 else
                 {
-                    // 縦長または正方形のテクスチャ
-                    displayWidth = previewSize * textureAspect;
-                    displayHeight = previewSize;
+                    // 縦長または正方形
+                    displayHeight = maxDisplaySize;
+                    displayWidth = maxDisplaySize * textureAspect;
                 }
                 
-                // 中央配置のために余白を計算
-                float xOffset = (previewSize - displayWidth) * 0.5f;
+                // 中央配置
+                GUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
                 
-                EditorGUILayout.BeginVertical(GUILayout.Width(previewSize), GUILayout.Height(previewSize));
-                GUILayout.Space(xOffset > 0 ? 0 : (previewSize - displayHeight) * 0.5f);
+                Rect previewRect = GUILayoutUtility.GetRect(displayWidth, displayHeight, GUILayout.ExpandWidth(false));
                 
-                EditorGUILayout.BeginHorizontal();
-                if (xOffset > 0) GUILayout.Space(xOffset);
+                if (Event.current.type == EventType.Repaint)
+                {
+                    // 背景（チェッカーボード）を描画
+                    DrawCheckerboard(previewRect);
+                    
+                    // プレビューを描画
+                    GUI.DrawTexture(previewRect, resultPreview, ScaleMode.ScaleToFit, true);
+                }
                 
-                Rect previewRect = GUILayoutUtility.GetRect(displayWidth, displayHeight);
-                
-                // 背景（チェッカーボード）を描画
-                DrawCheckerboard(previewRect);
-                
-                // プレビューを描画
-                EditorGUI.DrawPreviewTexture(previewRect, resultPreview);
-                
-                if (xOffset > 0) GUILayout.Space(xOffset);
-                EditorGUILayout.EndHorizontal();
-                
-                EditorGUILayout.EndVertical();
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
             }
             
             EditorGUILayout.Space();
@@ -446,9 +439,10 @@ namespace UniTexEditor
             }
             
             // プレビューを生成（Texture2Dとしてコピー）
+            // パフォーマンスのため512x512に制限
             try
             {
-                Texture2D result = processor.GetResultAsTexture2D();
+                Texture2D result = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION);
                 if (result != null)
                 {
                     resultPreview = result;
@@ -471,16 +465,82 @@ namespace UniTexEditor
                 return;
             }
             
-            UpdatePreview();
-            
-            if (resultPreview == null)
+            // 保存時はフル解像度で処理
+            Texture2D fullResResult = null;
+            try
             {
-                EditorUtility.DisplayDialog("エラー", "プレビューの生成に失敗しました。", "OK");
+                // ノードを再構築（UpdatePreviewと同じロジック）
+                processor.ClearNodes();
+                
+                if (showColorCorrection && (hueShift != 0 || saturation != 1f || brightness != 1f || gamma != 1f))
+                {
+                    var colorNode = new ColorCorrectionNode
+                    {
+                        hueShift = hueShift,
+                        saturation = saturation,
+                        brightness = brightness,
+                        gamma = gamma
+                    };
+                    processor.AddNode(colorNode);
+                }
+                
+                if (showBlend && blendTexture != null)
+                {
+                    var blendNode = new BlendNode
+                    {
+                        blendTexture = blendTexture,
+                        blendMode = blendMode,
+                        blendStrength = blendStrength,
+                        hdrColor = hdrColor
+                    };
+                    processor.AddNode(blendNode);
+                }
+                
+                if (showUVBlur && sourceMesh != null)
+                {
+                    var uvBlurNode = new UVIslandBlurNode
+                    {
+                        sourceMesh = sourceMesh,
+                        blurRadius = blurRadius,
+                        blurSigma = blurSigma
+                    };
+                    processor.AddNode(uvBlurNode);
+                }
+                
+                if (showToneCurve && (useRGBCurve || useRedCurve || useGreenCurve || useBlueCurve))
+                {
+                    var toneCurveNode = new ToneCurveNode
+                    {
+                        rgbCurve = rgbCurve,
+                        redCurve = redCurve,
+                        greenCurve = greenCurve,
+                        blueCurve = blueCurve,
+                        useRGBCurve = useRGBCurve,
+                        useRedCurve = useRedCurve,
+                        useGreenCurve = useGreenCurve,
+                        useBlueCurve = useBlueCurve
+                    };
+                    processor.AddNode(toneCurveNode);
+                }
+                
+                // フル解像度で処理
+                fullResResult = processor.GetResultAsTexture2D();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"フル解像度処理エラー: {e.Message}");
+                EditorUtility.DisplayDialog("エラー", "テクスチャ処理に失敗しました。", "OK");
+                return;
+            }
+            
+            if (fullResResult == null)
+            {
+                EditorUtility.DisplayDialog("エラー", "テクスチャの生成に失敗しました。", "OK");
                 return;
             }
             
             // 保存処理
-            byte[] bytes = resultPreview.EncodeToPNG();
+            byte[] bytes = fullResResult.EncodeToPNG();
             
             string savePath;
             if (overwriteSource)
@@ -498,11 +558,14 @@ namespace UniTexEditor
             
             if (string.IsNullOrEmpty(savePath))
             {
+                DestroyImmediate(fullResResult);
                 return;
             }
             
             File.WriteAllBytes(savePath, bytes);
             AssetDatabase.Refresh();
+            
+            DestroyImmediate(fullResResult);
             
             EditorUtility.DisplayDialog("成功", $"テクスチャを保存しました:\n{savePath}", "OK");
         }

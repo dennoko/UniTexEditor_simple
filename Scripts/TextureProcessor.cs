@@ -160,6 +160,46 @@ namespace UniTexEditor
         }
         
         /// <summary>
+        /// 結果をTexture2Dとして取得（解像度指定）
+        /// </summary>
+        /// <param name="maxResolution">最大解像度（幅と高さの大きい方）</param>
+        public Texture2D GetResultAsTexture2D(int maxResolution)
+        {
+            RenderTexture result = ProcessAll();
+            if (result == null) return null;
+            
+            // 元の解像度が小さければそのまま
+            if (result.width <= maxResolution && result.height <= maxResolution)
+            {
+                return RenderTextureToTexture2D(result);
+            }
+            
+            // リサイズが必要な場合
+            int newWidth, newHeight;
+            float aspect = (float)result.width / result.height;
+            
+            if (result.width > result.height)
+            {
+                newWidth = maxResolution;
+                newHeight = Mathf.RoundToInt(maxResolution / aspect);
+            }
+            else
+            {
+                newHeight = maxResolution;
+                newWidth = Mathf.RoundToInt(maxResolution * aspect);
+            }
+            
+            // リサイズ用のRenderTextureを作成
+            RenderTexture resizedRT = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.RGBA32);
+            Graphics.Blit(result, resizedRT);
+            
+            Texture2D resizedTex = RenderTextureToTexture2D(resizedRT);
+            RenderTexture.ReleaseTemporary(resizedRT);
+            
+            return resizedTex;
+        }
+        
+        /// <summary>
         /// クリーンアップ
         /// </summary>
         public void Cleanup()
