@@ -1,13 +1,13 @@
 // UVIslandBlur.compute
 // UVアイランドの境界を越えないブラー処理を行うCompute Shader
-// Separable Gaussian Blur（横方向パス）
+// Separable Gaussian Blur（横方向パス）+ マスクベース方式
 
 #pragma kernel CSMainHorizontal
 #pragma kernel CSMainVertical
 
 Texture2D<float4> Source;
 RWTexture2D<float4> Result;
-Texture2D<float> IslandIDMap;  // UV アイランド ID マップ
+Texture2D<float> BoundaryMask;  // UV境界マスク（0.0=境界、1.0=内部）
 
 int BlurRadius;
 float BlurSigma;
@@ -27,11 +27,11 @@ void CSMainHorizontal (uint3 id : SV_DispatchThreadID)
     if (id.x >= width || id.y >= height)
         return;
     
-    // 現在のピクセルのアイランドIDを取得
-    float centerIslandID = IslandIDMap[id.xy].r;
+    // 中心ピクセルのマスク値を取得
+    float centerMask = BoundaryMask[id.xy];
     
-    // アイランドIDが無効な場合はそのまま出力
-    if (centerIslandID < 0)
+    // 境界付近（マスク値が低い）場合はブラーを弱める
+    if (centerMask < 0.1)
     {
         Result[id.xy] = Source[id.xy];
         return;
@@ -46,16 +46,15 @@ void CSMainHorizontal (uint3 id : SV_DispatchThreadID)
         int sampleX = clamp((int)id.x + i, 0, (int)width - 1);
         int sampleY = id.y;
         
-        // サンプル位置のアイランドIDを取得
-        float sampleIslandID = IslandIDMap[uint2(sampleX, sampleY)].r;
+        // サンプル位置のマスク値を取得
+        float sampleMask = BoundaryMask[uint2(sampleX, sampleY)];
         
-        // 同じアイランド内のピクセルのみをサンプリング
-        if (abs(sampleIslandID - centerIslandID) < 0.1)
-        {
-            float weight = Gaussian((float)i, BlurSigma);
-            sum += Source[uint2(sampleX, sampleY)] * weight;
-            weightSum += weight;
-        }
+        // ガウス重み × マスク値でサンプリング重みを計算
+        float gaussWeight = Gaussian((float)i, BlurSigma);
+        float weight = gaussWeight * sampleMask;
+        
+        sum += Source[uint2(sampleX, sampleY)] * weight;
+        weightSum += weight;
     }
     
     // 正規化
@@ -78,11 +77,11 @@ void CSMainVertical (uint3 id : SV_DispatchThreadID)
     if (id.x >= width || id.y >= height)
         return;
     
-    // 現在のピクセルのアイランドIDを取得
-    float centerIslandID = IslandIDMap[id.xy].r;
+    // 中心ピクセルのマスク値を取得
+    float centerMask = BoundaryMask[id.xy];
     
-    // アイランドIDが無効な場合はそのまま出力
-    if (centerIslandID < 0)
+    // 境界付近（マスク値が低い）場合はブラーを弱める
+    if (centerMask < 0.1)
     {
         Result[id.xy] = Source[id.xy];
         return;
@@ -97,16 +96,15 @@ void CSMainVertical (uint3 id : SV_DispatchThreadID)
         int sampleX = id.x;
         int sampleY = clamp((int)id.y + i, 0, (int)height - 1);
         
-        // サンプル位置のアイランドIDを取得
-        float sampleIslandID = IslandIDMap[uint2(sampleX, sampleY)].r;
+        // サンプル位置のマスク値を取得
+        float sampleMask = BoundaryMask[uint2(sampleX, sampleY)];
         
-        // 同じアイランド内のピクセルのみをサンプリング
-        if (abs(sampleIslandID - centerIslandID) < 0.1)
-        {
-            float weight = Gaussian((float)i, BlurSigma);
-            sum += Source[uint2(sampleX, sampleY)] * weight;
-            weightSum += weight;
-        }
+        // ガウス重み × マスク値でサンプリング重みを計算
+        float gaussWeight = Gaussian((float)i, BlurSigma);
+        float weight = gaussWeight * sampleMask;
+        
+        sum += Source[uint2(sampleX, sampleY)] * weight;
+        weightSum += weight;
     }
     
     // 正規化

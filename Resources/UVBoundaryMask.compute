@@ -1,0 +1,135 @@
+// UVBoundaryMask.compute
+// UVアイランドの境界検出と膨張マスク生成
+// テクスチャの勾配（隣接ピクセルの色差）から境界を推定
+
+#pragma kernel DetectBoundary
+#pragma kernel DilateMask
+
+Texture2D<float4> SourceTexture;
+RWTexture2D<float> BoundaryMask;
+RWTexture2D<float> DilatedMask;
+
+uint2 TextureSize;
+float BoundaryThreshold;  // 色差の閾値
+int DilationRadius;       // 膨張半径
+
+// 境界検出：隣接ピクセルとの色差が大きい場所を境界と判定
+[numthreads(8,8,1)]
+void DetectBoundary (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= TextureSize.x || id.y >= TextureSize.y)
+        return;
+    
+    // テクスチャの透明度をチェック（UV外の領域）
+    float4 centerColor = SourceTexture[id.xy];
+    
+    // 完全に透明なピクセルは境界とする
+    if (centerColor.a < 0.01)
+    {
+        BoundaryMask[id.xy] = 0.0;
+        return;
+    }
+    
+    // 隣接8方向のピクセルとの色差をチェック
+    float maxColorDiff = 0.0;
+    bool hasTransparentNeighbor = false;
+    
+    for (int dy = -1; dy <= 1; dy++)
+    {
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            if (dx == 0 && dy == 0) continue;
+            
+            int2 neighborPos = int2(id.x + dx, id.y + dy);
+            
+            // 範囲外チェック
+            if (neighborPos.x < 0 || neighborPos.x >= (int)TextureSize.x ||
+                neighborPos.y < 0 || neighborPos.y >= (int)TextureSize.y)
+            {
+                hasTransparentNeighbor = true;
+                continue;
+            }
+            
+            float4 neighborColor = SourceTexture[neighborPos];
+            
+            // 透明な隣接ピクセルがあれば境界
+            if (neighborColor.a < 0.01)
+            {
+                hasTransparentNeighbor = true;
+                continue;
+            }
+            
+            // RGB色差を計算
+            float3 diff = abs(centerColor.rgb - neighborColor.rgb);
+            float colorDiff = max(diff.r, max(diff.g, diff.b));
+            maxColorDiff = max(maxColorDiff, colorDiff);
+        }
+    }
+    
+    // 境界判定：大きな色差または透明な隣接ピクセルがある場合
+    if (hasTransparentNeighbor || maxColorDiff > BoundaryThreshold)
+    {
+        BoundaryMask[id.xy] = 0.0;  // 境界（ブラーしない）
+    }
+    else
+    {
+        BoundaryMask[id.xy] = 1.0;  // 内部（ブラーする）
+    }
+}
+
+// マスクの膨張：境界から指定半径内をフェードアウト
+[numthreads(8,8,1)]
+void DilateMask (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= TextureSize.x || id.y >= TextureSize.y)
+        return;
+    
+    float centerValue = BoundaryMask[id.xy];
+    
+    // すでに境界（0.0）なら、そのまま
+    if (centerValue < 0.01)
+    {
+        DilatedMask[id.xy] = 0.0;
+        return;
+    }
+    
+    // 周囲のマスク値から最小距離を計算
+    float minDistance = 999999.0;
+    bool foundBoundary = false;
+    
+    for (int dy = -DilationRadius; dy <= DilationRadius; dy++)
+    {
+        for (int dx = -DilationRadius; dx <= DilationRadius; dx++)
+        {
+            int2 samplePos = int2(id.x + dx, id.y + dy);
+            
+            // 範囲外チェック
+            if (samplePos.x < 0 || samplePos.x >= (int)TextureSize.x ||
+                samplePos.y < 0 || samplePos.y >= (int)TextureSize.y)
+                continue;
+            
+            float sampleValue = BoundaryMask[samplePos];
+            
+            // 境界ピクセルを見つけた
+            if (sampleValue < 0.01)
+            {
+                float dist = length(float2(dx, dy));
+                minDistance = min(minDistance, dist);
+                foundBoundary = true;
+            }
+        }
+    }
+    
+    if (foundBoundary)
+    {
+        // 境界からの距離に応じてフェード（0.0～1.0）
+        // 境界: 0.0、DilationRadius離れた位置: 1.0
+        float normalizedDist = saturate(minDistance / (float)DilationRadius);
+        DilatedMask[id.xy] = normalizedDist;
+    }
+    else
+    {
+        // 境界が見つからなければ完全に内部
+        DilatedMask[id.xy] = 1.0;
+    }
+}

@@ -1,25 +1,27 @@
 using UnityEngine;
 using System;
-using System.Collections.Generic;
 
 namespace UniTexEditor
 {
     /// <summary>
     /// UV アイランド境界を越えないブラー処理ノード
+    /// マスクベース方式：テクスチャの勾配から境界を検出
     /// </summary>
     [Serializable]
     public class UVIslandBlurNode : ProcessingNode
     {
-        public Mesh sourceMesh;
         public int blurRadius = 5;
         public float blurSigma = 2f;
+        public float boundaryThreshold = 0.1f;  // 境界判定の色差閾値
+        public int dilationRadius = 5;          // 境界からの膨張半径
         
         private ComputeShader blurShader;
         private RenderTexture tempRT1;
         private RenderTexture tempRT2;
-        private Texture2D islandIDMap;
-        private List<UVIslandUtility.UVIsland> cachedIslands;
-        private Mesh cachedMesh; // キャッシュ検証用
+        private RenderTexture boundaryMask;
+        
+        // キャッシュ管理
+        private Texture2D cachedSourceTexture;
         private int cachedWidth = -1;
         private int cachedHeight = -1;
         
@@ -30,7 +32,10 @@ namespace UniTexEditor
         
         public override RenderTexture Process(RenderTexture source, RenderTexture mask = null)
         {
-            if (!enabled || sourceMesh == null) return source;
+            if (!enabled) return source;
+            
+            Debug.Log($"[UVIslandBlur] Process start - resolution={source.width}x{source.height}");
+            var startTime = System.DateTime.Now;
             
             if (blurShader == null)
             {
@@ -42,33 +47,45 @@ namespace UniTexEditor
                 }
             }
             
-            // UV アイランド ID マップを生成（キャッシュ）
-            // メッシュまたは解像度が変わった場合のみ再生成
-            if (islandIDMap == null || cachedIslands == null || 
-                cachedMesh != sourceMesh || 
+            // 境界マスクを生成（キャッシュ）
+            // 解像度が変わった場合のみ再生成
+            if (boundaryMask == null || 
                 cachedWidth != source.width || 
                 cachedHeight != source.height)
             {
-                Debug.Log($"[UVIslandBlur] Generating Island ID Map - mesh={sourceMesh.name}, resolution={source.width}x{source.height}");
-                var startTime = System.DateTime.Now;
+                Debug.Log($"[UVIslandBlur] Generating boundary mask - resolution={source.width}x{source.height}");
+                var maskStartTime = System.DateTime.Now;
                 
-                GenerateIslandIDMap(source.width, source.height);
+                // RenderTextureをTexture2Dに変換（一時的）
+                Texture2D sourceTexture = RenderTextureToTexture2D(source);
                 
-                var elapsed = (System.DateTime.Now - startTime).TotalMilliseconds;
-                Debug.Log($"[UVIslandBlur] Island ID Map generation completed in {elapsed:F0}ms");
+                // 境界マスクを生成
+                if (boundaryMask != null)
+                {
+                    boundaryMask.Release();
+                }
+                boundaryMask = UVBoundaryMaskUtility.GenerateBoundaryMask(
+                    sourceTexture, 
+                    boundaryThreshold, 
+                    dilationRadius
+                );
                 
-                cachedMesh = sourceMesh;
+                UnityEngine.Object.DestroyImmediate(sourceTexture);
+                
                 cachedWidth = source.width;
                 cachedHeight = source.height;
+                
+                var maskElapsed = (System.DateTime.Now - maskStartTime).TotalMilliseconds;
+                Debug.Log($"[UVIslandBlur] Boundary mask generation completed in {maskElapsed:F0}ms");
             }
             else
             {
-                Debug.Log("[UVIslandBlur] Using cached Island ID Map");
+                Debug.Log("[UVIslandBlur] Using cached boundary mask");
             }
             
-            if (islandIDMap == null)
+            if (boundaryMask == null)
             {
-                Debug.LogError("Failed to generate UV Island ID map!");
+                Debug.LogError("Failed to generate boundary mask!");
                 return source;
             }
             
@@ -96,7 +113,7 @@ namespace UniTexEditor
             int kernelH = blurShader.FindKernel("CSMainHorizontal");
             blurShader.SetTexture(kernelH, "Source", source);
             blurShader.SetTexture(kernelH, "Result", tempRT1);
-            blurShader.SetTexture(kernelH, "IslandIDMap", islandIDMap);
+            blurShader.SetTexture(kernelH, "BoundaryMask", boundaryMask);
             blurShader.SetInt("BlurRadius", blurRadius);
             blurShader.SetFloat("BlurSigma", blurSigma);
             blurShader.Dispatch(kernelH, threadGroupsX, threadGroupsY, 1);
@@ -105,42 +122,25 @@ namespace UniTexEditor
             int kernelV = blurShader.FindKernel("CSMainVertical");
             blurShader.SetTexture(kernelV, "Source", tempRT1);
             blurShader.SetTexture(kernelV, "Result", tempRT2);
-            blurShader.SetTexture(kernelV, "IslandIDMap", islandIDMap);
+            blurShader.SetTexture(kernelV, "BoundaryMask", boundaryMask);
             blurShader.SetInt("BlurRadius", blurRadius);
             blurShader.SetFloat("BlurSigma", blurSigma);
             blurShader.Dispatch(kernelV, threadGroupsX, threadGroupsY, 1);
             
+            var elapsed = (System.DateTime.Now - startTime).TotalMilliseconds;
+            Debug.Log($"[UVIslandBlur] Process completed in {elapsed:F0}ms");
+            
             return tempRT2;
         }
         
-        private void GenerateIslandIDMap(int width, int height)
+        private Texture2D RenderTextureToTexture2D(RenderTexture rt)
         {
-            if (sourceMesh == null)
-            {
-                Debug.LogWarning("Source mesh is not set for UV Island Blur!");
-                return;
-            }
-            
-            try
-            {
-                // UV アイランドを抽出
-                cachedIslands = UVIslandUtility.ExtractUVIslands(sourceMesh);
-                
-                if (cachedIslands.Count == 0)
-                {
-                    Debug.LogWarning($"No UV islands found in mesh: {sourceMesh.name}");
-                    return;
-                }
-                
-                Debug.Log($"Found {cachedIslands.Count} UV islands in mesh: {sourceMesh.name}");
-                
-                // ID マップを生成
-                islandIDMap = UVIslandUtility.GenerateIslandIDMap(cachedIslands, width, height);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to generate UV Island ID map: {e.Message}");
-            }
+            RenderTexture.active = rt;
+            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
+            tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+            tex.Apply();
+            RenderTexture.active = null;
+            return tex;
         }
         
         public override void Cleanup()
@@ -157,14 +157,13 @@ namespace UniTexEditor
                 tempRT2 = null;
             }
             
-            if (islandIDMap != null)
+            if (boundaryMask != null)
             {
-                UnityEngine.Object.DestroyImmediate(islandIDMap);
-                islandIDMap = null;
+                boundaryMask.Release();
+                boundaryMask = null;
             }
             
-            cachedIslands = null;
-            cachedMesh = null;
+            cachedSourceTexture = null;
             cachedWidth = -1;
             cachedHeight = -1;
         }

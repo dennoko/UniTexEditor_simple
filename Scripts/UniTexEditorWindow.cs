@@ -251,17 +251,10 @@ namespace UniTexEditor
             EditorGUILayout.Space();
             
             // ===== UV アイランドブラーセクション =====
-            GUI.enabled = sourceMesh != null;
-            showUVBlur = EditorGUILayout.Foldout(showUVBlur, "UVアイランドブラー", true);
-            if (showUVBlur && sourceMesh != null)
+            showUVBlur = EditorGUILayout.Foldout(showUVBlur, "UVアイランドブラー（メッシュ不要）", true);
+            if (showUVBlur)
             {
                 EditorGUI.indentLevel++;
-                
-                // 警告メッセージ
-                if (sourceMesh.vertexCount > 10000)
-                {
-                    EditorGUILayout.HelpBox($"警告: メッシュの頂点数が多い ({sourceMesh.vertexCount} verts) ため、初回生成に時間がかかる場合があります。", MessageType.Warning);
-                }
                 
                 EditorGUI.BeginChangeCheck();
                 
@@ -274,9 +267,8 @@ namespace UniTexEditor
                 }
                 
                 EditorGUI.indentLevel--;
-                EditorGUILayout.HelpBox("UVアイランドの境界を越えないブラー処理を適用します。初回のみアイランド解析に時間がかかりますが、2回目以降はキャッシュが使われます。", MessageType.Info);
+                EditorGUILayout.HelpBox("テクスチャの色差からUV境界を自動検出します。メッシュ不要で高速動作します。", MessageType.Info);
             }
-            GUI.enabled = true;
             
             EditorGUILayout.Space();
             
@@ -514,12 +506,11 @@ namespace UniTexEditor
                 hasNodes = true;
             }
             
-            // UVブラーノードを追加
-            if (showUVBlur && sourceMesh != null)
+            // UVブラーノードを追加（メッシュ不要版）
+            if (showUVBlur)
             {
                 var uvBlurNode = new UVIslandBlurNode
                 {
-                    sourceMesh = sourceMesh,
                     blurRadius = blurRadius,
                     blurSigma = blurSigma
                 };
@@ -679,11 +670,10 @@ namespace UniTexEditor
                     processor.AddNode(blendNode);
                 }
                 
-                if (showUVBlur && sourceMesh != null)
+                if (showUVBlur)
                 {
                     var uvBlurNode = new UVIslandBlurNode
                     {
-                        sourceMesh = sourceMesh,
                         blurRadius = blurRadius,
                         blurSigma = blurSigma
                     };
