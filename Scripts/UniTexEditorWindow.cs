@@ -13,6 +13,7 @@ namespace UniTexEditor
         private Texture2D sourceTexture;
         private Texture2D maskTexture;
         private Mesh sourceMesh;
+        private GameObject sourceGameObject; // SkinnedMeshRenderer対応
         private Texture2D resultPreview;
         
         // 色調補正パラメータ
@@ -34,6 +35,12 @@ namespace UniTexEditor
         private int blurRadius = 5;
         private float blurSigma = 2f;
         
+        // シャープネス/ぼかしパラメータ
+        private bool showSharpen = false;
+        private SharpenMode sharpenMode = SharpenMode.Sharpen;
+        private float sharpenStrength = 1f;
+        private int sharpenKernelSize = 5;
+        
         // トーンカーブパラメータ
         private bool showToneCurve = false;
         private AnimationCurve rgbCurve = AnimationCurve.Linear(0, 0, 1, 1);
@@ -45,8 +52,7 @@ namespace UniTexEditor
         private bool useGreenCurve = false;
         private bool useBlueCurve = false;
         
-        // マスクオプション
-        private bool useMask = false;
+        // マスクオプション（常時ON）
         private bool invertMask = false;
         private float maskStrength = 1f;
         
@@ -104,37 +110,53 @@ namespace UniTexEditor
             
             EditorGUILayout.Space();
             
-            // ===== マスクセクション =====
-            useMask = EditorGUILayout.Toggle("マスクを使用", useMask);
-            if (useMask)
+            // ===== マスクセクション（常時表示）=====
+            GUILayout.Label("マスク", EditorStyles.boldLabel);
+            EditorGUI.BeginChangeCheck();
+            maskTexture = (Texture2D)EditorGUILayout.ObjectField("マスクテクスチャ", maskTexture, typeof(Texture2D), false);
+            if (EditorGUI.EndChangeCheck())
             {
-                EditorGUI.indentLevel++;
-                EditorGUI.BeginChangeCheck();
-                maskTexture = (Texture2D)EditorGUILayout.ObjectField("マスクテクスチャ", maskTexture, typeof(Texture2D), false);
-                if (EditorGUI.EndChangeCheck())
-                {
-                    processor.MaskTexture = maskTexture;
-                    if (autoPreview) UpdatePreview();
-                }
-                invertMask = EditorGUILayout.Toggle("マスク反転", invertMask);
-                maskStrength = EditorGUILayout.Slider("マスク強度", maskStrength, 0f, 1f);
-                EditorGUI.indentLevel--;
+                processor.MaskTexture = maskTexture;
+                if (autoPreview) UpdatePreview();
             }
+            invertMask = EditorGUILayout.Toggle("マスク反転", invertMask);
+            maskStrength = EditorGUILayout.Slider("マスク強度", maskStrength, 0f, 1f);
             
             EditorGUILayout.Space();
             
             // ===== メッシュ（UV Blur用）セクション =====
             GUILayout.Label("メッシュ（UV Blur用、オプション）", EditorStyles.boldLabel);
             EditorGUI.BeginChangeCheck();
+            
+            // メッシュ直接指定
             sourceMesh = (Mesh)EditorGUILayout.ObjectField("メッシュ", sourceMesh, typeof(Mesh), false);
-            if (EditorGUI.EndChangeCheck() && autoPreview)
+            
+            // GameObjectから自動取得
+            sourceGameObject = (GameObject)EditorGUILayout.ObjectField("GameObject（自動取得）", sourceGameObject, typeof(GameObject), true);
+            
+            if (EditorGUI.EndChangeCheck())
             {
-                UpdatePreview();
+                // GameObjectが指定されている場合、そこからメッシュを取得
+                if (sourceGameObject != null)
+                {
+                    Mesh extractedMesh = ExtractMeshFromGameObject(sourceGameObject);
+                    if (extractedMesh != null)
+                    {
+                        sourceMesh = extractedMesh;
+                        EditorGUILayout.HelpBox($"メッシュを自動取得: {extractedMesh.name}", MessageType.Info);
+                    }
+                    else
+                    {
+                        EditorGUILayout.HelpBox("GameObjectにMeshFilterまたはSkinnedMeshRendererが見つかりません。", MessageType.Warning);
+                    }
+                }
+                
+                if (autoPreview) UpdatePreview();
             }
             
             if (sourceMesh != null)
             {
-                EditorGUILayout.HelpBox("メッシュが指定されています。UVアイランドブラーが利用可能です。", MessageType.Info);
+                EditorGUILayout.HelpBox($"メッシュ: {sourceMesh.name} ({sourceMesh.vertexCount} verts) - UVアイランドブラーが利用可能です。", MessageType.Info);
             }
             
             EditorGUILayout.Space();
@@ -176,6 +198,39 @@ namespace UniTexEditor
                 {
                     hdrColor = EditorGUILayout.ColorField(new GUIContent("HDR カラー"), hdrColor, true, true, true);
                 }
+                
+                if (EditorGUI.EndChangeCheck() && autoPreview)
+                {
+                    UpdatePreview();
+                }
+                
+                EditorGUI.indentLevel--;
+            }
+            
+            EditorGUILayout.Space();
+            
+            // ===== シャープネス/ぼかしセクション =====
+            showSharpen = EditorGUILayout.Foldout(showSharpen, "シャープネス / ぼかし", true);
+            if (showSharpen)
+            {
+                EditorGUI.indentLevel++;
+                EditorGUI.BeginChangeCheck();
+                
+                sharpenMode = (SharpenMode)EditorGUILayout.EnumPopup("モード", sharpenMode);
+                
+                if (sharpenMode == SharpenMode.Sharpen)
+                {
+                    sharpenStrength = EditorGUILayout.Slider("シャープネス強度", sharpenStrength, 0f, 2f);
+                    EditorGUILayout.HelpBox("Unsharp Mask方式でエッジを強調します。", MessageType.Info);
+                }
+                else
+                {
+                    sharpenStrength = EditorGUILayout.Slider("ぼかし強度", sharpenStrength, 0f, 1f);
+                    EditorGUILayout.HelpBox("ガウシアンブラーを適用します。", MessageType.Info);
+                }
+                
+                sharpenKernelSize = EditorGUILayout.IntSlider("カーネルサイズ", sharpenKernelSize, 3, 9);
+                if (sharpenKernelSize % 2 == 0) sharpenKernelSize++; // 奇数に強制
                 
                 if (EditorGUI.EndChangeCheck() && autoPreview)
                 {
@@ -437,6 +492,19 @@ namespace UniTexEditor
                 hasNodes = true;
             }
             
+            // シャープネス/ぼかしノードを追加
+            if (showSharpen)
+            {
+                var sharpenNode = new SharpenNode
+                {
+                    mode = sharpenMode,
+                    strength = sharpenStrength,
+                    kernelSize = sharpenKernelSize
+                };
+                processor.AddNode(sharpenNode);
+                hasNodes = true;
+            }
+            
             // トーンカーブノードを追加
             if (showToneCurve && (useRGBCurve || useRedCurve || useGreenCurve || useBlueCurve))
             {
@@ -587,6 +655,17 @@ namespace UniTexEditor
                     processor.AddNode(uvBlurNode);
                 }
                 
+                if (showSharpen)
+                {
+                    var sharpenNode = new SharpenNode
+                    {
+                        mode = sharpenMode,
+                        strength = sharpenStrength,
+                        kernelSize = sharpenKernelSize
+                    };
+                    processor.AddNode(sharpenNode);
+                }
+                
                 if (showToneCurve && (useRGBCurve || useRedCurve || useGreenCurve || useBlueCurve))
                 {
                     var toneCurveNode = new ToneCurveNode
@@ -658,6 +737,8 @@ namespace UniTexEditor
             gamma = 1f;
             blendStrength = 1f;
             hdrColor = Color.white;
+            sharpenStrength = 1f;
+            sharpenKernelSize = 5;
             
             // トーンカーブをリセット
             rgbCurve = AnimationCurve.Linear(0, 0, 1, 1);
@@ -669,6 +750,33 @@ namespace UniTexEditor
             {
                 UpdatePreview();
             }
+        }
+        
+        /// <summary>
+        /// GameObjectからMeshを抽出（MeshFilter / SkinnedMeshRenderer対応）
+        /// </summary>
+        private Mesh ExtractMeshFromGameObject(GameObject go)
+        {
+            if (go == null) return null;
+            
+            // MeshFilterから取得を試みる
+            MeshFilter meshFilter = go.GetComponent<MeshFilter>();
+            if (meshFilter != null && meshFilter.sharedMesh != null)
+            {
+                Debug.Log($"MeshFilterからメッシュを取得: {meshFilter.sharedMesh.name}");
+                return meshFilter.sharedMesh;
+            }
+            
+            // SkinnedMeshRendererから取得を試みる
+            SkinnedMeshRenderer skinnedMeshRenderer = go.GetComponent<SkinnedMeshRenderer>();
+            if (skinnedMeshRenderer != null && skinnedMeshRenderer.sharedMesh != null)
+            {
+                Debug.Log($"SkinnedMeshRendererからメッシュを取得: {skinnedMeshRenderer.sharedMesh.name}");
+                return skinnedMeshRenderer.sharedMesh;
+            }
+            
+            Debug.LogWarning($"GameObject '{go.name}' にMeshFilterまたはSkinnedMeshRendererが見つかりません。");
+            return null;
         }
     }
 }

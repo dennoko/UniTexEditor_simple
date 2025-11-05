@@ -66,7 +66,12 @@ UniTexEditor_simple/
     └── UVIslandBlur.compute
 ```
 
-## 最新の変更（v0.2.3）
+## 最新の変更（v0.3.0）
+- ✅ **シャープネス / ぼかし機能**: Unsharp Maskとガウシアンブラーを実装
+- ✅ **メッシュ指定の改善**: GameObject/SkinnedMeshRenderer自動対応
+- ✅ **マスク機能常時ON**: UIを簡素化
+
+## 以前の変更（v0.2.3）
 - ✅ **パラメータ調整時の黒画面を修正**: Compute Shaderのマスクエラーを解決
 - ✅ **RenderTextureFormat修正**: RGBA32→ARGB32に統一
 - ✅ **安定性向上**: すべてのノードでダミーマスク対応

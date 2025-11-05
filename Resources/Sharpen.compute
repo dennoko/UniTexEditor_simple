@@ -1,0 +1,94 @@
+// Sharpen.compute - シャープネス・ぼかし処理
+#pragma kernel CSMain
+
+Texture2D<float4> Source;
+Texture2D<float> Mask;
+RWTexture2D<float4> Result;
+
+int UseMask;
+int Mode; // 0: Sharpen, 1: Blur
+float Strength; // シャープネス強度 (0~2) or ぼかし強度 (0~1)
+int KernelSize; // 3, 5, 7, 9
+uint2 TextureSize;
+
+// ガウシアンカーネル用の重み計算
+float GaussianWeight(float x, float y, float sigma)
+{
+    return exp(-(x * x + y * y) / (2.0 * sigma * sigma)) / (2.0 * 3.14159265 * sigma * sigma);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= TextureSize.x || id.y >= TextureSize.y)
+        return;
+    
+    float4 originalColor = Source[id.xy];
+    float4 resultColor = originalColor;
+    
+    // マスク処理
+    float maskValue = 1.0;
+    if (UseMask == 1)
+    {
+        maskValue = Mask[id.xy];
+    }
+    
+    // カーネルサイズの半分
+    int radius = KernelSize / 2;
+    
+    if (Mode == 0) // Sharpen (Unsharp Mask)
+    {
+        // ぼかし画像を生成
+        float4 blurredColor = float4(0, 0, 0, 0);
+        float totalWeight = 0.0;
+        float sigma = max(1.0, radius / 2.0);
+        
+        for (int y = -radius; y <= radius; y++)
+        {
+            for (int x = -radius; x <= radius; x++)
+            {
+                int2 samplePos = int2(id.x + x, id.y + y);
+                samplePos = clamp(samplePos, int2(0, 0), int2(TextureSize.x - 1, TextureSize.y - 1));
+                
+                float weight = GaussianWeight(x, y, sigma);
+                blurredColor += Source[samplePos] * weight;
+                totalWeight += weight;
+            }
+        }
+        
+        blurredColor /= totalWeight;
+        
+        // Unsharp Mask: Original + (Original - Blurred) * Strength
+        float4 detail = originalColor - blurredColor;
+        resultColor = originalColor + detail * Strength;
+    }
+    else if (Mode == 1) // Blur (Gaussian)
+    {
+        float4 blurredColor = float4(0, 0, 0, 0);
+        float totalWeight = 0.0;
+        float sigma = max(1.0, radius / 2.0);
+        
+        for (int y = -radius; y <= radius; y++)
+        {
+            for (int x = -radius; x <= radius; x++)
+            {
+                int2 samplePos = int2(id.x + x, id.y + y);
+                samplePos = clamp(samplePos, int2(0, 0), int2(TextureSize.x - 1, TextureSize.y - 1));
+                
+                float weight = GaussianWeight(x, y, sigma);
+                blurredColor += Source[samplePos] * weight;
+                totalWeight += weight;
+            }
+        }
+        
+        blurredColor /= totalWeight;
+        
+        // ぼかし強度で補間
+        resultColor = lerp(originalColor, blurredColor, Strength);
+    }
+    
+    // マスクを適用
+    resultColor = lerp(originalColor, resultColor, maskValue);
+    
+    Result[id.xy] = resultColor;
+}
