@@ -144,14 +144,20 @@ namespace UniTexEditor
         
         /// <summary>
         /// RenderTextureをTexture2Dに変換
+        /// ガンマ補正を適切に処理してプレビューと保存画像の輝度を一致させる
         /// </summary>
-        public static Texture2D RenderTextureToTexture2D(RenderTexture rt)
+        private Texture2D RenderTextureToTexture2D(RenderTexture rt)
         {
+            // Linear色空間でTexture2Dを作成（ガンマ補正なし）
+            // これによりRenderTextureの値がそのまま保存される
+            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false, true);
+            
+            RenderTexture previous = RenderTexture.active;
             RenderTexture.active = rt;
-            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
             tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
             tex.Apply();
-            RenderTexture.active = null;
+            RenderTexture.active = previous;
+            
             return tex;
         }
         

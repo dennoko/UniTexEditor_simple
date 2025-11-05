@@ -620,11 +620,13 @@ namespace UniTexEditor
             RenderTexture rt = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.ARGB32);
             Graphics.Blit(source, rt);
             
+            // Linear色空間でTexture2Dを作成（ガンマ補正を適切に処理）
+            RenderTexture previous = RenderTexture.active;
             RenderTexture.active = rt;
-            Texture2D resized = new Texture2D(newWidth, newHeight, TextureFormat.RGBA32, false);
+            Texture2D resized = new Texture2D(newWidth, newHeight, TextureFormat.RGBA32, false, true);
             resized.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
             resized.Apply();
-            RenderTexture.active = null;
+            RenderTexture.active = previous;
             
             RenderTexture.ReleaseTemporary(rt);
             

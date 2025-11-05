@@ -135,11 +135,15 @@ namespace UniTexEditor
         
         private Texture2D RenderTextureToTexture2D(RenderTexture rt)
         {
+            // Linear色空間でTexture2Dを作成（ガンマ補正を適切に処理）
+            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false, true);
+            
+            RenderTexture previous = RenderTexture.active;
             RenderTexture.active = rt;
-            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
             tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
             tex.Apply();
-            RenderTexture.active = null;
+            RenderTexture.active = previous;
+            
             return tex;
         }
         
