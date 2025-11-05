@@ -1,0 +1,118 @@
+// Blend.compute
+// テクスチャ合成（複数ブレンドモード対応）を行うCompute Shader
+
+#pragma kernel CSMain
+
+Texture2D<float4> Source;
+Texture2D<float4> BlendTexture;
+RWTexture2D<float4> Result;
+Texture2D<float> Mask;
+
+int UseMask;
+int BlendMode;       // 0:Normal, 1:Multiply, 2:Add, 3:Screen, 4:Overlay, 5:HDRAdd, 6:HDRMultiply
+float BlendStrength; // 0 ~ 1
+float4 HDRColor;     // HDR合成用の色
+
+// ブレンドモード関数
+float3 BlendNormal(float3 base, float3 blend)
+{
+    return blend;
+}
+
+float3 BlendMultiply(float3 base, float3 blend)
+{
+    return base * blend;
+}
+
+float3 BlendAdd(float3 base, float3 blend)
+{
+    return base + blend;
+}
+
+float3 BlendScreen(float3 base, float3 blend)
+{
+    return 1.0 - (1.0 - base) * (1.0 - blend);
+}
+
+float3 BlendOverlay(float3 base, float3 blend)
+{
+    float3 result;
+    result.r = base.r < 0.5 ? (2.0 * base.r * blend.r) : (1.0 - 2.0 * (1.0 - base.r) * (1.0 - blend.r));
+    result.g = base.g < 0.5 ? (2.0 * base.g * blend.g) : (1.0 - 2.0 * (1.0 - base.g) * (1.0 - blend.g));
+    result.b = base.b < 0.5 ? (2.0 * base.b * blend.b) : (1.0 - 2.0 * (1.0 - base.b) * (1.0 - blend.b));
+    return result;
+}
+
+float3 BlendHDRAdd(float3 base, float3 blend, float4 hdrColor)
+{
+    return base + blend * hdrColor.rgb * hdrColor.a;
+}
+
+float3 BlendHDRMultiply(float3 base, float3 blend, float4 hdrColor)
+{
+    return base * (blend * hdrColor.rgb * hdrColor.a);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Result.GetDimensions(width, height);
+    
+    if (id.x >= width || id.y >= height)
+        return;
+    
+    float4 baseColor = Source[id.xy];
+    
+    // BlendTextureのサイズを取得してスケーリング
+    uint blendWidth, blendHeight;
+    BlendTexture.GetDimensions(blendWidth, blendHeight);
+    
+    uint2 blendCoord = uint2(
+        (id.x * blendWidth) / width,
+        (id.y * blendHeight) / height
+    );
+    float4 blendColor = BlendTexture[blendCoord];
+    
+    // マスクを取得（オプション）
+    float maskValue = 1.0;
+    if (UseMask > 0)
+    {
+        uint maskWidth, maskHeight;
+        Mask.GetDimensions(maskWidth, maskHeight);
+        
+        uint2 maskCoord = uint2(
+            (id.x * maskWidth) / width,
+            (id.y * maskHeight) / height
+        );
+        maskValue = Mask[maskCoord];
+    }
+    
+    // ブレンドモードに応じて合成
+    float3 blendedColor;
+    
+    if (BlendMode == 0)
+        blendedColor = BlendNormal(baseColor.rgb, blendColor.rgb);
+    else if (BlendMode == 1)
+        blendedColor = BlendMultiply(baseColor.rgb, blendColor.rgb);
+    else if (BlendMode == 2)
+        blendedColor = BlendAdd(baseColor.rgb, blendColor.rgb);
+    else if (BlendMode == 3)
+        blendedColor = BlendScreen(baseColor.rgb, blendColor.rgb);
+    else if (BlendMode == 4)
+        blendedColor = BlendOverlay(baseColor.rgb, blendColor.rgb);
+    else if (BlendMode == 5)
+        blendedColor = BlendHDRAdd(baseColor.rgb, blendColor.rgb, HDRColor);
+    else if (BlendMode == 6)
+        blendedColor = BlendHDRMultiply(baseColor.rgb, blendColor.rgb, HDRColor);
+    else
+        blendedColor = baseColor.rgb;
+    
+    // ブレンド強度を適用
+    blendedColor = lerp(baseColor.rgb, blendedColor, BlendStrength);
+    
+    // マスクを適用
+    blendedColor = lerp(baseColor.rgb, blendedColor, maskValue);
+    
+    Result[id.xy] = float4(blendedColor, baseColor.a);
+}

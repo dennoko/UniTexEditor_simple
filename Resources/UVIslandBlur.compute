@@ -1,0 +1,121 @@
+// UVIslandBlur.compute
+// UVアイランドの境界を越えないブラー処理を行うCompute Shader
+// Separable Gaussian Blur（横方向パス）
+
+#pragma kernel CSMainHorizontal
+#pragma kernel CSMainVertical
+
+Texture2D<float4> Source;
+RWTexture2D<float4> Result;
+Texture2D<float> IslandIDMap;  // UV アイランド ID マップ
+
+int BlurRadius;
+float BlurSigma;
+
+// ガウス関数
+float Gaussian(float x, float sigma)
+{
+    return exp(-(x * x) / (2.0 * sigma * sigma)) / (sqrt(2.0 * 3.14159265359) * sigma);
+}
+
+[numthreads(8,8,1)]
+void CSMainHorizontal (uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Result.GetDimensions(width, height);
+    
+    if (id.x >= width || id.y >= height)
+        return;
+    
+    // 現在のピクセルのアイランドIDを取得
+    float centerIslandID = IslandIDMap[id.xy].r;
+    
+    // アイランドIDが無効な場合はそのまま出力
+    if (centerIslandID < 0)
+    {
+        Result[id.xy] = Source[id.xy];
+        return;
+    }
+    
+    float4 sum = float4(0, 0, 0, 0);
+    float weightSum = 0.0;
+    
+    // 横方向にブラー
+    for (int i = -BlurRadius; i <= BlurRadius; i++)
+    {
+        int sampleX = clamp((int)id.x + i, 0, (int)width - 1);
+        int sampleY = id.y;
+        
+        // サンプル位置のアイランドIDを取得
+        float sampleIslandID = IslandIDMap[uint2(sampleX, sampleY)].r;
+        
+        // 同じアイランド内のピクセルのみをサンプリング
+        if (abs(sampleIslandID - centerIslandID) < 0.1)
+        {
+            float weight = Gaussian((float)i, BlurSigma);
+            sum += Source[uint2(sampleX, sampleY)] * weight;
+            weightSum += weight;
+        }
+    }
+    
+    // 正規化
+    if (weightSum > 0.0)
+    {
+        Result[id.xy] = sum / weightSum;
+    }
+    else
+    {
+        Result[id.xy] = Source[id.xy];
+    }
+}
+
+[numthreads(8,8,1)]
+void CSMainVertical (uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Result.GetDimensions(width, height);
+    
+    if (id.x >= width || id.y >= height)
+        return;
+    
+    // 現在のピクセルのアイランドIDを取得
+    float centerIslandID = IslandIDMap[id.xy].r;
+    
+    // アイランドIDが無効な場合はそのまま出力
+    if (centerIslandID < 0)
+    {
+        Result[id.xy] = Source[id.xy];
+        return;
+    }
+    
+    float4 sum = float4(0, 0, 0, 0);
+    float weightSum = 0.0;
+    
+    // 縦方向にブラー
+    for (int i = -BlurRadius; i <= BlurRadius; i++)
+    {
+        int sampleX = id.x;
+        int sampleY = clamp((int)id.y + i, 0, (int)height - 1);
+        
+        // サンプル位置のアイランドIDを取得
+        float sampleIslandID = IslandIDMap[uint2(sampleX, sampleY)].r;
+        
+        // 同じアイランド内のピクセルのみをサンプリング
+        if (abs(sampleIslandID - centerIslandID) < 0.1)
+        {
+            float weight = Gaussian((float)i, BlurSigma);
+            sum += Source[uint2(sampleX, sampleY)] * weight;
+            weightSum += weight;
+        }
+    }
+    
+    // 正規化
+    if (weightSum > 0.0)
+    {
+        Result[id.xy] = sum / weightSum;
+    }
+    else
+    {
+        Result[id.xy] = Source[id.xy];
+    }
+}

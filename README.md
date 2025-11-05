@@ -29,9 +29,39 @@
 
 ## クイックスタート
 1. 本フォルダを Unity プロジェクトの `Assets/Editor/UniTexEditor_simple` に配置します。
-2. Unity を開き、メニューの `Window > UniTex Editor`（実装後）からエディタウィンドウを起動します。
+2. Unity を開き、メニューの `Window > UniTex Editor` からエディタウィンドウを起動します。
 3. テクスチャ、マスク、メッシュ（UV ブラーを使う場合）を指定してパラメータを調整します。
 4. 「Apply（非破壊レイヤに追加）」または「Overwrite（上書き）」を選択します。
+
+### 初回セットアップの確認
+- `Window > UniTex Editor > Check System Info` でCompute Shader対応を確認
+- `Window > UniTex Editor > Run Simple Test` で動作テストを実行
+- テスト成功時は `Assets/UniTexEditor_TestResult.png` が生成されます
+
+### 詳細な使い方
+`SAMPLES.md` を参照してください。具体的なワークフローとサンプルを記載しています。
+
+## ファイル構成
+```
+UniTexEditor_simple/
+├── README.md              # 本ファイル
+├── ARCHITECTURE.md        # 設計ドキュメント
+├── SAMPLES.md            # サンプルとチュートリアル
+├── CHANGELOG.md          # 変更履歴
+├── LICENSE               # MITライセンス
+├── Scripts/              # C# スクリプト
+│   ├── UniTexEditor.asmdef
+│   ├── ProcessingNode.cs
+│   ├── TextureProcessor.cs
+│   ├── UVIslandUtility.cs
+│   ├── UVIslandBlurNode.cs
+│   ├── UniTexEditorWindow.cs
+│   └── UniTexEditorTests.cs
+└── Resources/            # Compute Shaders
+    ├── ColorCorrection.compute
+    ├── Blend.compute
+    └── UVIslandBlur.compute
+```
 
 ## 開発ロードマップ（概要）
 1. ドキュメントとアーキテクチャ設計（完了）
