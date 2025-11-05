@@ -12,6 +12,7 @@
   - 彩度（Saturation）
   - 明度（Brightness/Value）
   - ガンマ補正（Gamma）
+  - **トーンカーブ調整（RGB / R / G / B 個別）** ← NEW!
 - 制御・合成
   - マスク指定（グレースケール）：適用範囲、強度、反転
   - テクスチャ合成（複数ブレンドモード：標準、乗算、加算、スクリーン、オーバーレイ 等）
@@ -21,6 +22,7 @@
 - ワークフロー
   - 非破壊編集（レイヤ/プリセット）
   - 結果は新しいテクスチャとして出力、またはオプションで既存テクスチャを上書き可能
+  - **レスポンシブなプレビュー表示（正方形維持、チェッカーボード背景）** ← NEW!
 
 ## 技術的前提（推奨）
 - Unity 2020.3 LTS 以降を推奨
@@ -57,11 +59,17 @@ UniTexEditor_simple/
 │   ├── UVIslandBlurNode.cs
 │   ├── UniTexEditorWindow.cs
 │   └── UniTexEditorTests.cs
-└── Resources/            # Compute Shaders
+├── Resources/            # Compute Shaders
     ├── ColorCorrection.compute
     ├── Blend.compute
+    ├── ToneCurve.compute
     └── UVIslandBlur.compute
 ```
+
+## 最新の変更（v0.2.0）
+- ✅ **トーンカーブ機能追加**: AnimationCurve で細かい色調整が可能に
+- ✅ **プレビュー表示改善**: 真っ暗になる問題を修正、正方形維持で最大化表示
+- ✅ **チェッカーボード背景**: 透明度を確認しやすく
 
 ## 開発ロードマップ（概要）
 1. ドキュメントとアーキテクチャ設計（完了）

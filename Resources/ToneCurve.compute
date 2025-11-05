@@ -1,0 +1,87 @@
+// ToneCurve.compute
+// カーブによる色調整を行うCompute Shader
+
+#pragma kernel CSMain
+
+Texture2D<float4> Source;
+RWTexture2D<float4> Result;
+Texture2D<float> Mask;
+
+// カーブのルックアップテーブル（256エントリ）
+StructuredBuffer<float> RGBCurve;
+StructuredBuffer<float> RedCurve;
+StructuredBuffer<float> GreenCurve;
+StructuredBuffer<float> BlueCurve;
+
+int UseMask;
+int UseRGBCurve;
+int UseRedCurve;
+int UseGreenCurve;
+int UseBlueCurve;
+
+// カーブから値を取得（線形補間）
+float SampleCurve(StructuredBuffer<float> curve, float input)
+{
+    float index = saturate(input) * 255.0;
+    int i0 = (int)floor(index);
+    int i1 = min(i0 + 1, 255);
+    float t = frac(index);
+    
+    return lerp(curve[i0], curve[i1], t);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Result.GetDimensions(width, height);
+    
+    if (id.x >= width || id.y >= height)
+        return;
+    
+    float4 color = Source[id.xy];
+    float3 adjustedColor = color.rgb;
+    
+    // マスクを取得（オプション）
+    float maskValue = 1.0;
+    if (UseMask > 0)
+    {
+        uint maskWidth, maskHeight;
+        Mask.GetDimensions(maskWidth, maskHeight);
+        
+        uint2 maskCoord = uint2(
+            (id.x * maskWidth) / width,
+            (id.y * maskHeight) / height
+        );
+        maskValue = Mask[maskCoord];
+    }
+    
+    // RGB カーブを適用（全チャンネル共通）
+    if (UseRGBCurve > 0)
+    {
+        adjustedColor.r = SampleCurve(RGBCurve, adjustedColor.r);
+        adjustedColor.g = SampleCurve(RGBCurve, adjustedColor.g);
+        adjustedColor.b = SampleCurve(RGBCurve, adjustedColor.b);
+    }
+    
+    // 個別チャンネルのカーブを適用
+    if (UseRedCurve > 0)
+    {
+        adjustedColor.r = SampleCurve(RedCurve, adjustedColor.r);
+    }
+    
+    if (UseGreenCurve > 0)
+    {
+        adjustedColor.g = SampleCurve(GreenCurve, adjustedColor.g);
+    }
+    
+    if (UseBlueCurve > 0)
+    {
+        adjustedColor.b = SampleCurve(BlueCurve, adjustedColor.b);
+    }
+    
+    // マスクを適用
+    adjustedColor = lerp(color.rgb, adjustedColor, maskValue);
+    
+    Result[id.xy] = float4(adjustedColor, color.a);
+}

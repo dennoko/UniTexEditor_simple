@@ -23,14 +23,17 @@
 ## コンポーネント一覧
 - Editor UI
   - テクスチャ/マスク/メッシュ選択、スライダ（Hue/Sat/Brightness/Gamma）、ブレンドモード、マスクオプション、出力オプション
+  - トーンカーブエディタ（RGB/R/G/B 個別調整）
+  - レスポンシブなプレビュー表示（正方形維持、チェッカーボード背景）
 - Core Processing Pipeline
   - 処理キュー（非破壊レイヤ管理）
-  - 各種処理ノード（ColorCorrectionNode, BlendNode, MaskNode, BlurNode）
+  - 各種処理ノード（ColorCorrectionNode, BlendNode, MaskNode, BlurNode, ToneCurveNode）
 - GPU Compute Shaders
   - ColorCorrection.compute（Hue/Sat/Brightness/Gamma）
   - Blend.compute（各種ブレンドモード）
   - MaskApply.compute（マスク適用）
   - UVIslandBlur.compute（UV 境界対応ブラー）
+  - ToneCurve.compute（カーブベースの色調整）
 - Texture IO
   - Editor 用の読み込み/書き出しユーティリティ（RenderTexture を介して Tex2D に変換）
 - UV Utilities

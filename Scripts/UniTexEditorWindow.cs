@@ -34,6 +34,17 @@ namespace UniTexEditor
         private int blurRadius = 5;
         private float blurSigma = 2f;
         
+        // トーンカーブパラメータ
+        private bool showToneCurve = false;
+        private AnimationCurve rgbCurve = AnimationCurve.Linear(0, 0, 1, 1);
+        private AnimationCurve redCurve = AnimationCurve.Linear(0, 0, 1, 1);
+        private AnimationCurve greenCurve = AnimationCurve.Linear(0, 0, 1, 1);
+        private AnimationCurve blueCurve = AnimationCurve.Linear(0, 0, 1, 1);
+        private bool useRGBCurve = true;
+        private bool useRedCurve = false;
+        private bool useGreenCurve = false;
+        private bool useBlueCurve = false;
+        
         // マスクオプション
         private bool useMask = false;
         private bool invertMask = false;
@@ -46,7 +57,8 @@ namespace UniTexEditor
         // プレビュー
         private bool autoPreview = true;
         private Vector2 scrollPosition;
-        private float previewScale = 1f;
+        private Vector2 previewScrollPosition;
+        private const float PREVIEW_MAX_SIZE = 512f; // プレビュー最大サイズ
         
         [MenuItem("Window/UniTex Editor")]
         public static void ShowWindow()
@@ -190,6 +202,58 @@ namespace UniTexEditor
             
             EditorGUILayout.Space();
             
+            // ===== トーンカーブセクション =====
+            showToneCurve = EditorGUILayout.Foldout(showToneCurve, "トーンカーブ（色調整）", true);
+            if (showToneCurve)
+            {
+                EditorGUI.indentLevel++;
+                EditorGUI.BeginChangeCheck();
+                
+                useRGBCurve = EditorGUILayout.Toggle("RGB カーブを使用", useRGBCurve);
+                if (useRGBCurve)
+                {
+                    EditorGUI.indentLevel++;
+                    rgbCurve = EditorGUILayout.CurveField("RGB カーブ", rgbCurve, Color.white, new Rect(0, 0, 1, 1));
+                    EditorGUI.indentLevel--;
+                }
+                
+                EditorGUILayout.Space(5);
+                
+                useRedCurve = EditorGUILayout.Toggle("R カーブを使用", useRedCurve);
+                if (useRedCurve)
+                {
+                    EditorGUI.indentLevel++;
+                    redCurve = EditorGUILayout.CurveField("R カーブ", redCurve, Color.red, new Rect(0, 0, 1, 1));
+                    EditorGUI.indentLevel--;
+                }
+                
+                useGreenCurve = EditorGUILayout.Toggle("G カーブを使用", useGreenCurve);
+                if (useGreenCurve)
+                {
+                    EditorGUI.indentLevel++;
+                    greenCurve = EditorGUILayout.CurveField("G カーブ", greenCurve, Color.green, new Rect(0, 0, 1, 1));
+                    EditorGUI.indentLevel--;
+                }
+                
+                useBlueCurve = EditorGUILayout.Toggle("B カーブを使用", useBlueCurve);
+                if (useBlueCurve)
+                {
+                    EditorGUI.indentLevel++;
+                    blueCurve = EditorGUILayout.CurveField("B カーブ", blueCurve, Color.blue, new Rect(0, 0, 1, 1));
+                    EditorGUI.indentLevel--;
+                }
+                
+                if (EditorGUI.EndChangeCheck() && autoPreview)
+                {
+                    UpdatePreview();
+                }
+                
+                EditorGUI.indentLevel--;
+                EditorGUILayout.HelpBox("カーブを調整してトーン（明暗）を細かく制御できます。RGBは全チャンネル共通、R/G/Bは個別調整です。", MessageType.Info);
+            }
+            
+            EditorGUILayout.Space();
+            
             // ===== プレビューセクション =====
             GUILayout.Label("プレビュー", EditorStyles.boldLabel);
             autoPreview = EditorGUILayout.Toggle("自動プレビュー", autoPreview);
@@ -202,12 +266,53 @@ namespace UniTexEditor
             if (resultPreview != null)
             {
                 EditorGUILayout.Space();
-                previewScale = EditorGUILayout.Slider("プレビュー倍率", previewScale, 0.1f, 2f);
+                GUILayout.Label($"プレビュー ({resultPreview.width}x{resultPreview.height})", EditorStyles.miniLabel);
                 
-                float width = resultPreview.width * previewScale;
-                float height = resultPreview.height * previewScale;
-                Rect rect = GUILayoutUtility.GetRect(width, height);
-                EditorGUI.DrawPreviewTexture(rect, resultPreview);
+                // 表示可能領域を取得
+                float availableWidth = EditorGUIUtility.currentViewWidth - 40f;
+                float maxSize = Mathf.Min(PREVIEW_MAX_SIZE, availableWidth);
+                
+                // アスペクト比を維持しつつ、正方形の表示領域を確保
+                float previewSize = maxSize;
+                
+                // テクスチャのアスペクト比を計算
+                float textureAspect = (float)resultPreview.width / resultPreview.height;
+                float displayWidth, displayHeight;
+                
+                if (textureAspect > 1f)
+                {
+                    // 横長のテクスチャ
+                    displayWidth = previewSize;
+                    displayHeight = previewSize / textureAspect;
+                }
+                else
+                {
+                    // 縦長または正方形のテクスチャ
+                    displayWidth = previewSize * textureAspect;
+                    displayHeight = previewSize;
+                }
+                
+                // 中央配置のために余白を計算
+                float xOffset = (previewSize - displayWidth) * 0.5f;
+                
+                EditorGUILayout.BeginVertical(GUILayout.Width(previewSize), GUILayout.Height(previewSize));
+                GUILayout.Space(xOffset > 0 ? 0 : (previewSize - displayHeight) * 0.5f);
+                
+                EditorGUILayout.BeginHorizontal();
+                if (xOffset > 0) GUILayout.Space(xOffset);
+                
+                Rect previewRect = GUILayoutUtility.GetRect(displayWidth, displayHeight);
+                
+                // 背景（チェッカーボード）を描画
+                DrawCheckerboard(previewRect);
+                
+                // プレビューを描画
+                EditorGUI.DrawPreviewTexture(previewRect, resultPreview);
+                
+                if (xOffset > 0) GUILayout.Space(xOffset);
+                EditorGUILayout.EndHorizontal();
+                
+                EditorGUILayout.EndVertical();
             }
             
             EditorGUILayout.Space();
@@ -249,9 +354,38 @@ namespace UniTexEditor
             EditorGUILayout.EndScrollView();
         }
         
+        /// <summary>
+        /// チェッカーボード背景を描画（透明度確認用）
+        /// </summary>
+        private void DrawCheckerboard(Rect rect)
+        {
+            Color color1 = new Color(0.8f, 0.8f, 0.8f);
+            Color color2 = new Color(0.6f, 0.6f, 0.6f);
+            int checkSize = 8;
+            
+            for (int y = 0; y < rect.height; y += checkSize)
+            {
+                for (int x = 0; x < rect.width; x += checkSize)
+                {
+                    bool isColor1 = ((x / checkSize) + (y / checkSize)) % 2 == 0;
+                    EditorGUI.DrawRect(new Rect(rect.x + x, rect.y + y, 
+                        Mathf.Min(checkSize, rect.width - x), 
+                        Mathf.Min(checkSize, rect.height - y)), 
+                        isColor1 ? color1 : color2);
+                }
+            }
+        }
+        
         private void UpdatePreview()
         {
             if (sourceTexture == null) return;
+            
+            // 既存のプレビューを破棄
+            if (resultPreview != null)
+            {
+                DestroyImmediate(resultPreview);
+                resultPreview = null;
+            }
             
             // ノードをクリアして再構築
             processor.ClearNodes();
@@ -294,16 +428,39 @@ namespace UniTexEditor
                 processor.AddNode(uvBlurNode);
             }
             
-            // プレビューを生成
-            Texture2D result = processor.GetResultAsTexture2D();
-            if (result != null)
+            // トーンカーブノードを追加
+            if (showToneCurve && (useRGBCurve || useRedCurve || useGreenCurve || useBlueCurve))
             {
-                if (resultPreview != null)
+                var toneCurveNode = new ToneCurveNode
                 {
-                    DestroyImmediate(resultPreview);
-                }
-                resultPreview = result;
+                    rgbCurve = rgbCurve,
+                    redCurve = redCurve,
+                    greenCurve = greenCurve,
+                    blueCurve = blueCurve,
+                    useRGBCurve = useRGBCurve,
+                    useRedCurve = useRedCurve,
+                    useGreenCurve = useGreenCurve,
+                    useBlueCurve = useBlueCurve
+                };
+                processor.AddNode(toneCurveNode);
             }
+            
+            // プレビューを生成（Texture2Dとしてコピー）
+            try
+            {
+                Texture2D result = processor.GetResultAsTexture2D();
+                if (result != null)
+                {
+                    resultPreview = result;
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"プレビュー生成エラー: {e.Message}");
+            }
+            
+            // UIを再描画
+            Repaint();
         }
         
         private void ApplyAndSave()
@@ -358,6 +515,12 @@ namespace UniTexEditor
             gamma = 1f;
             blendStrength = 1f;
             hdrColor = Color.white;
+            
+            // トーンカーブをリセット
+            rgbCurve = AnimationCurve.Linear(0, 0, 1, 1);
+            redCurve = AnimationCurve.Linear(0, 0, 1, 1);
+            greenCurve = AnimationCurve.Linear(0, 0, 1, 1);
+            blueCurve = AnimationCurve.Linear(0, 0, 1, 1);
             
             if (autoPreview)
             {
