@@ -19,6 +19,9 @@ namespace UniTexEditor
         private RenderTexture tempRT2;
         private Texture2D islandIDMap;
         private List<UVIslandUtility.UVIsland> cachedIslands;
+        private Mesh cachedMesh; // キャッシュ検証用
+        private int cachedWidth = -1;
+        private int cachedHeight = -1;
         
         public UVIslandBlurNode()
         {
@@ -40,9 +43,27 @@ namespace UniTexEditor
             }
             
             // UV アイランド ID マップを生成（キャッシュ）
-            if (islandIDMap == null || cachedIslands == null)
+            // メッシュまたは解像度が変わった場合のみ再生成
+            if (islandIDMap == null || cachedIslands == null || 
+                cachedMesh != sourceMesh || 
+                cachedWidth != source.width || 
+                cachedHeight != source.height)
             {
+                Debug.Log($"[UVIslandBlur] Generating Island ID Map - mesh={sourceMesh.name}, resolution={source.width}x{source.height}");
+                var startTime = System.DateTime.Now;
+                
                 GenerateIslandIDMap(source.width, source.height);
+                
+                var elapsed = (System.DateTime.Now - startTime).TotalMilliseconds;
+                Debug.Log($"[UVIslandBlur] Island ID Map generation completed in {elapsed:F0}ms");
+                
+                cachedMesh = sourceMesh;
+                cachedWidth = source.width;
+                cachedHeight = source.height;
+            }
+            else
+            {
+                Debug.Log("[UVIslandBlur] Using cached Island ID Map");
             }
             
             if (islandIDMap == null)
@@ -143,6 +164,9 @@ namespace UniTexEditor
             }
             
             cachedIslands = null;
+            cachedMesh = null;
+            cachedWidth = -1;
+            cachedHeight = -1;
         }
     }
 }

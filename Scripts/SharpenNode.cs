@@ -33,6 +33,8 @@ namespace UniTexEditor
         public override RenderTexture Process(RenderTexture source, RenderTexture mask = null)
         {
             if (!enabled) return source;
+
+            Debug.Log($"[SharpenNode] Process start - mode={mode} strength={strength} kernel={kernelSize} source={source?.width}x{source?.height}");
             
             if (sharpenShader == null)
             {
@@ -62,7 +64,14 @@ namespace UniTexEditor
                 tempRT.Create();
             }
             
-            int kernelIndex = sharpenShader.FindKernel("CSMain");
+            int kernelIndex = -1;
+            try { kernelIndex = sharpenShader.FindKernel("CSMain"); } catch (Exception e) { Debug.LogError($"[SharpenNode] FindKernel error: {e.Message}"); }
+
+            if (kernelIndex < 0)
+            {
+                Debug.LogError("[SharpenNode] CSMain kernel not found");
+                return source;
+            }
             
             // パラメータをセット
             sharpenShader.SetTexture(kernelIndex, "Source", source);
@@ -87,11 +96,23 @@ namespace UniTexEditor
             sharpenShader.SetInt("KernelSize", kernelSize);
             sharpenShader.SetInts("TextureSize", new int[] { source.width, source.height });
             
-            // ディスパッチ
-            int threadGroupsX = Mathf.CeilToInt(source.width / 8.0f);
-            int threadGroupsY = Mathf.CeilToInt(source.height / 8.0f);
-            sharpenShader.Dispatch(kernelIndex, threadGroupsX, threadGroupsY, 1);
-            
+            try
+            {
+                // ディスパッチ
+                int threadGroupsX = Mathf.CeilToInt(source.width / 8.0f);
+                int threadGroupsY = Mathf.CeilToInt(source.height / 8.0f);
+                if (threadGroupsX <= 0) threadGroupsX = 1;
+                if (threadGroupsY <= 0) threadGroupsY = 1;
+                sharpenShader.Dispatch(kernelIndex, threadGroupsX, threadGroupsY, 1);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[SharpenNode] Dispatch error: {e.Message}\n{e.StackTrace}");
+                return source;
+            }
+
+            Debug.Log("[SharpenNode] Process completed");
+
             return tempRT;
         }
         

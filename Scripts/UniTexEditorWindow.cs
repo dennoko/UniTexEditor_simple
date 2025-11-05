@@ -58,7 +58,8 @@ namespace UniTexEditor
         
         // 出力オプション
         private bool overwriteSource = false;
-        private string outputPath = "Assets/";
+        private string outputPath = "";
+        private string customOutputPath = ""; // ユーザーが明示的に指定したパス
         
         // プレビュー
         private bool autoPreview = true;
@@ -105,6 +106,13 @@ namespace UniTexEditor
             if (EditorGUI.EndChangeCheck())
             {
                 processor.SourceTexture = sourceTexture;
+                
+                // デフォルト出力パスを更新（カスタムパスが指定されていない場合のみ）
+                if (sourceTexture != null && string.IsNullOrEmpty(customOutputPath))
+                {
+                    UpdateDefaultOutputPath();
+                }
+                
                 if (autoPreview) UpdatePreview();
             }
             
@@ -248,6 +256,13 @@ namespace UniTexEditor
             if (showUVBlur && sourceMesh != null)
             {
                 EditorGUI.indentLevel++;
+                
+                // 警告メッセージ
+                if (sourceMesh.vertexCount > 10000)
+                {
+                    EditorGUILayout.HelpBox($"警告: メッシュの頂点数が多い ({sourceMesh.vertexCount} verts) ため、初回生成に時間がかかる場合があります。", MessageType.Warning);
+                }
+                
                 EditorGUI.BeginChangeCheck();
                 
                 blurRadius = EditorGUILayout.IntSlider("ブラー半径", blurRadius, 1, 20);
@@ -259,7 +274,7 @@ namespace UniTexEditor
                 }
                 
                 EditorGUI.indentLevel--;
-                EditorGUILayout.HelpBox("UVアイランドの境界を越えないブラー処理を適用します。", MessageType.Info);
+                EditorGUILayout.HelpBox("UVアイランドの境界を越えないブラー処理を適用します。初回のみアイランド解析に時間がかかりますが、2回目以降はキャッシュが使われます。", MessageType.Info);
             }
             GUI.enabled = true;
             
@@ -383,16 +398,36 @@ namespace UniTexEditor
             if (!overwriteSource)
             {
                 EditorGUILayout.BeginHorizontal();
-                outputPath = EditorGUILayout.TextField("出力パス", outputPath);
+                
+                // 表示用のパス（デフォルトまたはカスタム）
+                string displayPath = string.IsNullOrEmpty(customOutputPath) ? outputPath : customOutputPath;
+                EditorGUI.BeginChangeCheck();
+                string newPath = EditorGUILayout.TextField("出力パス", displayPath);
+                if (EditorGUI.EndChangeCheck() && newPath != displayPath)
+                {
+                    // ユーザーが手動で編集した場合
+                    customOutputPath = newPath;
+                    outputPath = newPath;
+                }
+                
                 if (GUILayout.Button("...", GUILayout.Width(30)))
                 {
-                    string path = EditorUtility.SaveFilePanelInProject("保存先を選択", "EditedTexture", "png", "保存先を選択してください");
+                    string defaultName = sourceTexture != null ? Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(sourceTexture)) + "_edited" : "EditedTexture";
+                    string path = EditorUtility.SaveFilePanelInProject("保存先を選択", defaultName, "png", "保存先を選択してください");
                     if (!string.IsNullOrEmpty(path))
                     {
+                        customOutputPath = path;
                         outputPath = path;
                     }
                 }
+                
                 EditorGUILayout.EndHorizontal();
+                
+                // デフォルトパスの説明
+                if (string.IsNullOrEmpty(customOutputPath) && !string.IsNullOrEmpty(outputPath))
+                {
+                    EditorGUILayout.HelpBox("デフォルト: ソーステクスチャと同じフォルダに保存されます。", MessageType.Info);
+                }
             }
             
             EditorGUILayout.Space();
@@ -708,10 +743,13 @@ namespace UniTexEditor
             }
             else
             {
-                savePath = outputPath;
+                // カスタムパスが指定されていればそれを使用、なければデフォルトパス
+                savePath = string.IsNullOrEmpty(customOutputPath) ? outputPath : customOutputPath;
+                
                 if (string.IsNullOrEmpty(savePath))
                 {
-                    savePath = EditorUtility.SaveFilePanelInProject("保存先を選択", "EditedTexture", "png", "保存先を選択してください");
+                    string defaultName = sourceTexture != null ? Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(sourceTexture)) + "_edited" : "EditedTexture";
+                    savePath = EditorUtility.SaveFilePanelInProject("保存先を選択", defaultName, "png", "保存先を選択してください");
                 }
             }
             
@@ -777,6 +815,43 @@ namespace UniTexEditor
             
             Debug.LogWarning($"GameObject '{go.name}' にMeshFilterまたはSkinnedMeshRendererが見つかりません。");
             return null;
+        }
+        
+        /// <summary>
+        /// デフォルト出力パスを更新（ソーステクスチャと同じフォルダ）
+        /// </summary>
+        private void UpdateDefaultOutputPath()
+        {
+            if (sourceTexture == null)
+            {
+                outputPath = "";
+                return;
+            }
+            
+            string sourcePath = AssetDatabase.GetAssetPath(sourceTexture);
+            if (string.IsNullOrEmpty(sourcePath))
+            {
+                outputPath = "Assets/";
+                return;
+            }
+            
+            // ソースファイルと同じディレクトリ、ファイル名に "_edited" を追加
+            string directory = Path.GetDirectoryName(sourcePath);
+            string fileNameWithoutExt = Path.GetFileNameWithoutExtension(sourcePath);
+            string extension = Path.GetExtension(sourcePath);
+            
+            // 拡張子がない、またはpng以外の場合はpngを使用
+            if (string.IsNullOrEmpty(extension) || extension.ToLower() != ".png")
+            {
+                extension = ".png";
+            }
+            
+            outputPath = Path.Combine(directory, fileNameWithoutExt + "_edited" + extension);
+            
+            // Windowsパス区切りをUnity形式に変換
+            outputPath = outputPath.Replace("\\", "/");
+            
+            Debug.Log($"デフォルト出力パス設定: {outputPath}");
         }
     }
 }

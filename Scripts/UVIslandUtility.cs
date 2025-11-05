@@ -21,6 +21,7 @@ namespace UniTexEditor
         
         /// <summary>
         /// メッシュからUVアイランドを抽出
+        /// 最適化版：大規模メッシュに対応
         /// </summary>
         public static List<UVIsland> ExtractUVIslands(Mesh mesh)
         {
@@ -39,11 +40,16 @@ namespace UniTexEditor
                 return new List<UVIsland>();
             }
             
+            int triCount = triangles.Length / 3;
+            Debug.Log($"[UVIslandUtility] Processing mesh: {mesh.name} ({mesh.vertexCount} verts, {triCount} triangles)");
+            
             // 三角形ごとにグループ化（同じアイランドに属する三角形を特定）
             List<HashSet<int>> islands = new List<HashSet<int>>();
-            bool[] processed = new bool[triangles.Length / 3];
+            bool[] processed = new bool[triCount];
             
-            for (int i = 0; i < triangles.Length / 3; i++)
+            int processedCount = 0;
+            
+            for (int i = 0; i < triCount; i++)
             {
                 if (processed[i]) continue;
                 
@@ -62,8 +68,8 @@ namespace UniTexEditor
                     int v1 = triangles[triIndex * 3 + 1];
                     int v2 = triangles[triIndex * 3 + 2];
                     
-                    // 隣接する三角形を探す（UV空間で接続されているか）
-                    for (int j = 0; j < triangles.Length / 3; j++)
+                    // 最適化：未処理の三角形のみチェック
+                    for (int j = i + 1; j < triCount; j++)
                     {
                         if (processed[j]) continue;
                         
@@ -81,6 +87,13 @@ namespace UniTexEditor
                 }
                 
                 islands.Add(island);
+                processedCount++;
+                
+                // 進捗ログ（10個ごと）
+                if (processedCount % 10 == 0 || processedCount == islands.Count)
+                {
+                    Debug.Log($"[UVIslandUtility] Found {islands.Count} islands so far... ({i + 1}/{triCount} triangles checked)");
+                }
             }
             
             // UVIslandオブジェクトに変換
@@ -167,6 +180,7 @@ namespace UniTexEditor
         
         /// <summary>
         /// UV アイランド ID マップを生成（テクスチャ）
+        /// 最適化版：三角形を効率的にラスタライズ
         /// </summary>
         public static Texture2D GenerateIslandIDMap(List<UVIsland> islands, int width, int height)
         {
@@ -179,6 +193,8 @@ namespace UniTexEditor
                 pixels[i] = new Color(-1, 0, 0, 0);
             }
             
+            int totalTriangles = 0;
+            
             // 各アイランドをラスタライズ
             for (int i = 0; i < islands.Count; i++)
             {
@@ -189,14 +205,16 @@ namespace UniTexEditor
                 {
                     if (j + 2 >= island.uvPoints.Count) break;
                     
+                    totalTriangles++;
+                    
                     Vector2 uv0 = island.uvPoints[j];
                     Vector2 uv1 = island.uvPoints[j + 1];
                     Vector2 uv2 = island.uvPoints[j + 2];
                     
                     // UV座標をピクセル座標に変換
-                    Vector2Int p0 = new Vector2Int((int)(uv0.x * width), (int)(uv0.y * height));
-                    Vector2Int p1 = new Vector2Int((int)(uv1.x * width), (int)(uv1.y * height));
-                    Vector2Int p2 = new Vector2Int((int)(uv2.x * width), (int)(uv2.y * height));
+                    Vector2Int p0 = new Vector2Int(Mathf.Clamp((int)(uv0.x * width), 0, width - 1), Mathf.Clamp((int)(uv0.y * height), 0, height - 1));
+                    Vector2Int p1 = new Vector2Int(Mathf.Clamp((int)(uv1.x * width), 0, width - 1), Mathf.Clamp((int)(uv1.y * height), 0, height - 1));
+                    Vector2Int p2 = new Vector2Int(Mathf.Clamp((int)(uv2.x * width), 0, width - 1), Mathf.Clamp((int)(uv2.y * height), 0, height - 1));
                     
                     // 三角形のバウンディングボックスを取得
                     int minX = Mathf.Max(0, Mathf.Min(p0.x, Mathf.Min(p1.x, p2.x)));
@@ -204,19 +222,40 @@ namespace UniTexEditor
                     int minY = Mathf.Max(0, Mathf.Min(p0.y, Mathf.Min(p1.y, p2.y)));
                     int maxY = Mathf.Min(height - 1, Mathf.Max(p0.y, Mathf.Max(p1.y, p2.y)));
                     
-                    // バウンディングボックス内のピクセルをチェック
-                    for (int y = minY; y <= maxY; y++)
+                    // バウンディングボックスが小さすぎる場合はスキップ
+                    if (maxX < minX || maxY < minY) continue;
+                    
+                    // 最適化：小さい三角形は直接ピクセル設定
+                    int bboxArea = (maxX - minX + 1) * (maxY - minY + 1);
+                    if (bboxArea <= 4)
                     {
-                        for (int x = minX; x <= maxX; x++)
+                        // 小さい三角形：全ピクセルを塗る
+                        for (int y = minY; y <= maxY; y++)
                         {
-                            if (IsPointInTriangle(new Vector2(x, y), p0, p1, p2))
+                            for (int x = minX; x <= maxX; x++)
                             {
                                 pixels[y * width + x] = new Color(i, 0, 0, 1);
                             }
                         }
                     }
+                    else
+                    {
+                        // 通常の三角形：点が内部にあるかチェック
+                        for (int y = minY; y <= maxY; y++)
+                        {
+                            for (int x = minX; x <= maxX; x++)
+                            {
+                                if (IsPointInTriangle(new Vector2(x, y), p0, p1, p2))
+                                {
+                                    pixels[y * width + x] = new Color(i, 0, 0, 1);
+                                }
+                            }
+                        }
+                    }
                 }
             }
+            
+            Debug.Log($"[UVIslandUtility] Rasterized {totalTriangles} triangles into {width}x{height} ID map");
             
             idMap.SetPixels(pixels);
             idMap.Apply();

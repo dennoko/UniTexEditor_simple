@@ -116,6 +116,13 @@ namespace UniTexEditor
                 if (!node.enabled) continue;
                 
                 temp = node.Process(current, maskRT);
+                if (temp == null)
+                {
+                    Debug.LogError($"[TextureProcessor] Node '{node.nodeName}' returned null during processing.");
+                    // Clean up mask and any non-working RTs
+                    if (maskRT != null) { maskRT.Release(); }
+                    return null;
+                }
                 
                 // 前のテンポラリを解放（ワーキングテクスチャは保持）
                 if (current != workingRT && current != temp)
