@@ -56,10 +56,11 @@ namespace UniTexEditor
         private bool invertMask = false;
         private float maskStrength = 1f;
         
-        // 出力オプション
+        // 出力設定
         private bool overwriteSource = false;
         private string outputPath = "";
         private string customOutputPath = ""; // ユーザーが明示的に指定したパス
+        private bool convertToSRGBOnSave = true; // 保存時にsRGBに変換するか
         
         // プレビュー
         private bool autoPreview = true;
@@ -422,6 +423,17 @@ namespace UniTexEditor
                 }
             }
             
+            // 色空間変換オプション
+            EditorGUILayout.Space(5);
+            convertToSRGBOnSave = EditorGUILayout.Toggle(new GUIContent("sRGB変換して保存", 
+                "ON: 一般的な画像ビューア向け（推奨）\nOFF: Linear色空間のまま保存（高精度）"), 
+                convertToSRGBOnSave);
+            
+            if (!convertToSRGBOnSave)
+            {
+                EditorGUILayout.HelpBox("⚠ Linear色空間で保存すると、一部の画像ビューアで暗く表示される場合があります。", MessageType.Warning);
+            }
+            
             EditorGUILayout.Space();
             
             // ===== 実行ボタン =====
@@ -553,25 +565,26 @@ namespace UniTexEditor
             // パフォーマンスのため512x512に制限
             try
             {
-                Texture2D result;
+                Texture2D linearResult;
                 
                 if (hasNodes)
                 {
-                    // ノードがある場合は処理を実行
-                    // プレビュー用なので linear=false (sRGB色空間) でGUI表示に適合
-                    result = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION, false);
+                    // ノードがある場合は処理を実行（Linear色空間で取得）
+                    linearResult = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION);
                 }
                 else
                 {
                     // ノードがない場合はソーステクスチャをそのまま使用（リサイズのみ）
-                    // プレビュー用なので linear=false (sRGB色空間)
-                    result = ResizeTexture(sourceTexture, PREVIEW_RESOLUTION, false);
+                    linearResult = ResizeTexture(sourceTexture, PREVIEW_RESOLUTION);
                 }
                 
-                if (result != null)
+                if (linearResult != null)
                 {
-                    resultPreview = result;
-                    Debug.Log($"プレビュー生成成功: {result.width}x{result.height}, format={result.format}, hasNodes={hasNodes}");
+                    // GUI表示用にLinear→sRGB変換
+                    resultPreview = TextureProcessor.ConvertLinearToSRGB(linearResult);
+                    DestroyImmediate(linearResult); // Linear版は破棄
+                    
+                    Debug.Log($"プレビュー生成成功: {resultPreview.width}x{resultPreview.height}, format={resultPreview.format}, hasNodes={hasNodes}");
                 }
                 else
                 {
@@ -589,17 +602,17 @@ namespace UniTexEditor
         
         /// <summary>
         /// テクスチャをリサイズ（アスペクト比維持）
+        /// 常にLinear色空間で返す
         /// </summary>
-        /// <param name="linear">true=Linear色空間（保存用）、false=sRGB色空間（GUI表示用）</param>
-        private Texture2D ResizeTexture(Texture2D source, int maxResolution, bool linear = false)
+        private Texture2D ResizeTexture(Texture2D source, int maxResolution)
         {
             if (source == null) return null;
             
             // 元の解像度が小さければそのまま
             if (source.width <= maxResolution && source.height <= maxResolution)
             {
-                // コピーを作成（色空間を指定）
-                Texture2D copy = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false, linear);
+                // コピーを作成（Linear色空間）
+                Texture2D copy = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false, true);
                 Graphics.CopyTexture(source, copy);
                 return copy;
             }
@@ -623,10 +636,10 @@ namespace UniTexEditor
             RenderTexture rt = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.ARGB32);
             Graphics.Blit(source, rt);
             
-            // 色空間を指定してTexture2Dを作成
+            // Linear色空間でTexture2Dを作成
             RenderTexture previous = RenderTexture.active;
             RenderTexture.active = rt;
-            Texture2D resized = new Texture2D(newWidth, newHeight, TextureFormat.RGBA32, false, linear);
+            Texture2D resized = new Texture2D(newWidth, newHeight, TextureFormat.RGBA32, false, true);
             resized.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
             resized.Apply();
             RenderTexture.active = previous;
@@ -712,9 +725,8 @@ namespace UniTexEditor
                     processor.AddNode(toneCurveNode);
                 }
                 
-                // フル解像度で処理
-                // 保存用なので linear=true (Linear色空間) で正確な色を保存
-                fullResResult = processor.GetResultAsTexture2D(true);
+                // フル解像度で処理（Linear色空間で取得）
+                fullResResult = processor.GetResultAsTexture2D();
             }
             catch (System.Exception e)
             {
@@ -729,8 +741,22 @@ namespace UniTexEditor
                 return;
             }
             
+            // 色空間変換（オプション）
+            Texture2D textureToSave = fullResResult;
+            if (convertToSRGBOnSave)
+            {
+                // Linear → sRGB 変換
+                textureToSave = TextureProcessor.ConvertLinearToSRGB(fullResResult);
+                DestroyImmediate(fullResResult); // Linear版は破棄
+                Debug.Log("保存用にLinear→sRGB変換を実行しました");
+            }
+            else
+            {
+                Debug.Log("Linear色空間のまま保存します");
+            }
+            
             // 保存処理
-            byte[] bytes = fullResResult.EncodeToPNG();
+            byte[] bytes = textureToSave.EncodeToPNG();
             
             string savePath;
             if (overwriteSource)
@@ -751,14 +777,14 @@ namespace UniTexEditor
             
             if (string.IsNullOrEmpty(savePath))
             {
-                DestroyImmediate(fullResResult);
+                DestroyImmediate(textureToSave);
                 return;
             }
             
             File.WriteAllBytes(savePath, bytes);
             AssetDatabase.Refresh();
             
-            DestroyImmediate(fullResResult);
+            DestroyImmediate(textureToSave);
             
             EditorUtility.DisplayDialog("成功", $"テクスチャを保存しました:\n{savePath}", "OK");
         }

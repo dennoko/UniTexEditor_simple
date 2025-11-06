@@ -43,15 +43,17 @@ namespace UniTexEditor.Tests
                     {
                         Debug.Log($"✓ Processing successful! Result: {result.width}x{result.height}");
                         
-                        // プレビューとして保存（Linear色空間で正確に保存）
-                        Texture2D resultTex = TextureProcessor.RenderTextureToTexture2D(result, true);
-                        byte[] bytes = resultTex.EncodeToPNG();
+                        // Linear色空間で取得してsRGB変換してから保存
+                        Texture2D linearTex = TextureProcessor.RenderTextureToTexture2D(result);
+                        Texture2D srgbTex = TextureProcessor.ConvertLinearToSRGB(linearTex);
+                        byte[] bytes = srgbTex.EncodeToPNG();
                         string path = "Assets/UniTexEditor_TestResult.png";
                         System.IO.File.WriteAllBytes(path, bytes);
                         AssetDatabase.Refresh();
                         Debug.Log($"✓ Test result saved to: {path}");
                         
-                        Object.DestroyImmediate(resultTex);
+                        Object.DestroyImmediate(linearTex);
+                        Object.DestroyImmediate(srgbTex);
                     }
                     else
                     {
