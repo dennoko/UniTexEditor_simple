@@ -143,60 +143,66 @@ namespace UniTexEditor
         }
         
         /// <summary>
-        /// RenderTextureをTexture2Dに変換（常にLinear色空間）
-        /// GPU処理結果を正確に保持するため、Linear色空間で統一
-        /// GUI表示用にはConvertLinearToSRGB()で変換してください
+        /// RenderTextureをTexture2Dに変換（Linear色空間のままコピー）
         /// </summary>
-        /// <param name="rt">変換元のRenderTexture</param>
-        /// <returns>Linear色空間のTexture2D</returns>
         public static Texture2D RenderTextureToTexture2D(RenderTexture rt)
         {
-            // Linear色空間で作成（GPU計算結果を正確に保持）
-            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false, true);
-            
-            RenderTexture previous = RenderTexture.active;
+            if (rt == null) return null;
+
+            var linearTexture = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false, true);
+            var prev = RenderTexture.active;
             RenderTexture.active = rt;
-            tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
-            tex.Apply();
-            RenderTexture.active = previous;
-            
-            return tex;
+            linearTexture.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+            linearTexture.Apply();
+            RenderTexture.active = prev;
+
+            return linearTexture;
         }
-        
+
         /// <summary>
-        /// Linear色空間のTexture2DをsRGB色空間に変換
-        /// GUI表示やsRGB画像保存用に使用
+        /// Linear色空間のテクスチャをsRGB色空間に変換
+        /// プロジェクトがGamma色空間の場合は重複変換を避ける
         /// </summary>
-        /// <param name="linearTexture">Linear色空間のテクスチャ</param>
-        /// <returns>sRGB色空間の新しいTexture2D</returns>
         public static Texture2D ConvertLinearToSRGB(Texture2D linearTexture)
         {
             if (linearTexture == null) return null;
-            
-            // CPU側で確実にLinear→sRGB変換を実施（プロジェクト色空間設定に依存しない）
-            var linearPixels = linearTexture.GetPixels();
-            for (int i = 0; i < linearPixels.Length; i++)
+
+            bool shouldGammaEncode = QualitySettings.activeColorSpace == ColorSpace.Linear;
+            var pixels = linearTexture.GetPixels();
+
+            if (shouldGammaEncode)
             {
-                Color c = linearPixels[i];
-                c.r = Mathf.LinearToGammaSpace(Mathf.Clamp01(c.r));
-                c.g = Mathf.LinearToGammaSpace(Mathf.Clamp01(c.g));
-                c.b = Mathf.LinearToGammaSpace(Mathf.Clamp01(c.b));
-                linearPixels[i] = c;
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    Color c = pixels[i];
+                    c.r = Mathf.LinearToGammaSpace(Mathf.Clamp01(c.r));
+                    c.g = Mathf.LinearToGammaSpace(Mathf.Clamp01(c.g));
+                    c.b = Mathf.LinearToGammaSpace(Mathf.Clamp01(c.b));
+                    pixels[i] = c;
+                }
             }
-            
+            else
+            {
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    Color c = pixels[i];
+                    c.r = Mathf.Clamp01(c.r);
+                    c.g = Mathf.Clamp01(c.g);
+                    c.b = Mathf.Clamp01(c.b);
+                    pixels[i] = c;
+                }
+            }
+
             var srgbTexture = new Texture2D(linearTexture.width, linearTexture.height, TextureFormat.RGBA32, false, false);
-            srgbTexture.SetPixels(linearPixels);
+            srgbTexture.SetPixels(pixels);
             srgbTexture.Apply();
-            
+
             return srgbTexture;
         }
-        
+
         /// <summary>
         /// 結果をTexture2Dとして取得（Linear色空間）
-        /// GPU処理結果を正確に保持
-        /// GUI表示用にはConvertLinearToSRGB()で変換してください
         /// </summary>
-        /// <returns>Linear色空間のTexture2D</returns>
         public Texture2D GetResultAsTexture2D()
         {
             RenderTexture result = ProcessAll();
@@ -207,8 +213,6 @@ namespace UniTexEditor
         
         /// <summary>
         /// 結果をTexture2Dとして取得（解像度指定、Linear色空間）
-        /// GPU処理結果を正確に保持
-        /// GUI表示用にはConvertLinearToSRGB()で変換してください
         /// </summary>
         /// <param name="maxResolution">最大解像度（幅と高さの大きい方）</param>
         /// <returns>Linear色空間のTexture2D</returns>
@@ -239,7 +243,7 @@ namespace UniTexEditor
             }
             
             // リサイズ用のRenderTextureを作成
-            RenderTexture resizedRT = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.ARGB32);
+            RenderTexture resizedRT = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.ARGBFloat);
             Graphics.Blit(result, resizedRT);
             
             Texture2D resizedTex = RenderTextureToTexture2D(resizedRT);

@@ -567,16 +567,8 @@ namespace UniTexEditor
             {
                 Texture2D linearResult;
                 
-                if (hasNodes)
-                {
-                    // ノードがある場合は処理を実行（Linear色空間で取得）
-                    linearResult = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION);
-                }
-                else
-                {
-                    // ノードがない場合はソーステクスチャをそのまま使用（リサイズのみ）
-                    linearResult = ResizeTexture(sourceTexture, PREVIEW_RESOLUTION);
-                }
+                // ノード有無に関係なく処理パイプラインを通してLinear色空間の結果を取得
+                linearResult = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION);
                 
                 if (linearResult != null)
                 {
@@ -600,54 +592,7 @@ namespace UniTexEditor
             Repaint();
         }
         
-        /// <summary>
-        /// テクスチャをリサイズ（アスペクト比維持）
-        /// 常にLinear色空間で返す
-        /// </summary>
-        private Texture2D ResizeTexture(Texture2D source, int maxResolution)
-        {
-            if (source == null) return null;
-            
-            // 元の解像度が小さければそのまま
-            if (source.width <= maxResolution && source.height <= maxResolution)
-            {
-                // コピーを作成（Linear色空間）
-                Texture2D copy = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false, true);
-                Graphics.CopyTexture(source, copy);
-                return copy;
-            }
-            
-            // リサイズが必要な場合
-            int newWidth, newHeight;
-            float aspect = (float)source.width / source.height;
-            
-            if (source.width > source.height)
-            {
-                newWidth = maxResolution;
-                newHeight = Mathf.RoundToInt(maxResolution / aspect);
-            }
-            else
-            {
-                newHeight = maxResolution;
-                newWidth = Mathf.RoundToInt(maxResolution * aspect);
-            }
-            
-            // RenderTextureを使ってリサイズ
-            RenderTexture rt = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.ARGB32);
-            Graphics.Blit(source, rt);
-            
-            // Linear色空間でTexture2Dを作成
-            RenderTexture previous = RenderTexture.active;
-            RenderTexture.active = rt;
-            Texture2D resized = new Texture2D(newWidth, newHeight, TextureFormat.RGBA32, false, true);
-            resized.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
-            resized.Apply();
-            RenderTexture.active = previous;
-            
-            RenderTexture.ReleaseTemporary(rt);
-            
-            return resized;
-        }
+        // ResizeTextureは旧処理で使用していたが、色空間の不整合を防ぐため廃止
         
         private void ApplyAndSave()
         {
