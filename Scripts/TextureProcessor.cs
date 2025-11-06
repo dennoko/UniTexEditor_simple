@@ -173,21 +173,20 @@ namespace UniTexEditor
         {
             if (linearTexture == null) return null;
             
-            // sRGB色空間で新しいテクスチャを作成
-            Texture2D srgbTexture = new Texture2D(linearTexture.width, linearTexture.height, TextureFormat.RGBA32, false, false);
+            // CPU側で確実にLinear→sRGB変換を実施（プロジェクト色空間設定に依存しない）
+            var linearPixels = linearTexture.GetPixels();
+            for (int i = 0; i < linearPixels.Length; i++)
+            {
+                Color c = linearPixels[i];
+                c.r = Mathf.LinearToGammaSpace(Mathf.Clamp01(c.r));
+                c.g = Mathf.LinearToGammaSpace(Mathf.Clamp01(c.g));
+                c.b = Mathf.LinearToGammaSpace(Mathf.Clamp01(c.b));
+                linearPixels[i] = c;
+            }
             
-            // RenderTextureを使って色空間変換
-            // Graphics.Blitは自動的にLinear→sRGB変換を行う
-            RenderTexture tempRT = RenderTexture.GetTemporary(linearTexture.width, linearTexture.height, 0, RenderTextureFormat.ARGB32);
-            Graphics.Blit(linearTexture, tempRT);
-            
-            RenderTexture previous = RenderTexture.active;
-            RenderTexture.active = tempRT;
-            srgbTexture.ReadPixels(new Rect(0, 0, tempRT.width, tempRT.height), 0, 0);
+            var srgbTexture = new Texture2D(linearTexture.width, linearTexture.height, TextureFormat.RGBA32, false, false);
+            srgbTexture.SetPixels(linearPixels);
             srgbTexture.Apply();
-            RenderTexture.active = previous;
-            
-            RenderTexture.ReleaseTemporary(tempRT);
             
             return srgbTexture;
         }
