@@ -146,11 +146,13 @@ namespace UniTexEditor
         /// RenderTextureをTexture2Dに変換
         /// ガンマ補正を適切に処理してプレビューと保存画像の輝度を一致させる
         /// </summary>
-        private Texture2D RenderTextureToTexture2D(RenderTexture rt)
+        /// <param name="rt">変換元のRenderTexture</param>
+        /// <param name="linear">true=Linear色空間（保存用）、false=sRGB色空間（GUI表示用）</param>
+        public static Texture2D RenderTextureToTexture2D(RenderTexture rt, bool linear = true)
         {
-            // Linear色空間でTexture2Dを作成（ガンマ補正なし）
-            // これによりRenderTextureの値がそのまま保存される
-            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false, true);
+            // linear=true: 保存用（ガンマ補正なし）
+            // linear=false: GUI表示用（sRGBガンマ補正あり）
+            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false, linear);
             
             RenderTexture previous = RenderTexture.active;
             RenderTexture.active = rt;
@@ -164,19 +166,21 @@ namespace UniTexEditor
         /// <summary>
         /// 結果をTexture2Dとして取得
         /// </summary>
-        public Texture2D GetResultAsTexture2D()
+        /// <param name="linear">true=Linear色空間（保存用）、false=sRGB色空間（GUI表示用）</param>
+        public Texture2D GetResultAsTexture2D(bool linear = true)
         {
             RenderTexture result = ProcessAll();
             if (result == null) return null;
             
-            return RenderTextureToTexture2D(result);
+            return RenderTextureToTexture2D(result, linear);
         }
         
         /// <summary>
         /// 結果をTexture2Dとして取得（解像度指定）
         /// </summary>
         /// <param name="maxResolution">最大解像度（幅と高さの大きい方）</param>
-        public Texture2D GetResultAsTexture2D(int maxResolution)
+        /// <param name="linear">true=Linear色空間（保存用）、false=sRGB色空間（GUI表示用）</param>
+        public Texture2D GetResultAsTexture2D(int maxResolution, bool linear = false)
         {
             RenderTexture result = ProcessAll();
             if (result == null) return null;
@@ -184,7 +188,7 @@ namespace UniTexEditor
             // 元の解像度が小さければそのまま
             if (result.width <= maxResolution && result.height <= maxResolution)
             {
-                return RenderTextureToTexture2D(result);
+                return RenderTextureToTexture2D(result, linear);
             }
             
             // リサイズが必要な場合
@@ -206,7 +210,7 @@ namespace UniTexEditor
             RenderTexture resizedRT = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.ARGB32);
             Graphics.Blit(result, resizedRT);
             
-            Texture2D resizedTex = RenderTextureToTexture2D(resizedRT);
+            Texture2D resizedTex = RenderTextureToTexture2D(resizedRT, linear);
             RenderTexture.ReleaseTemporary(resizedRT);
             
             return resizedTex;

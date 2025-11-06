@@ -43,8 +43,8 @@ namespace UniTexEditor.Tests
                     {
                         Debug.Log($"✓ Processing successful! Result: {result.width}x{result.height}");
                         
-                        // プレビューとして保存
-                        Texture2D resultTex = TextureProcessor.RenderTextureToTexture2D(result);
+                        // プレビューとして保存（Linear色空間で正確に保存）
+                        Texture2D resultTex = TextureProcessor.RenderTextureToTexture2D(result, true);
                         byte[] bytes = resultTex.EncodeToPNG();
                         string path = "Assets/UniTexEditor_TestResult.png";
                         System.IO.File.WriteAllBytes(path, bytes);

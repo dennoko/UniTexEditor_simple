@@ -558,12 +558,14 @@ namespace UniTexEditor
                 if (hasNodes)
                 {
                     // ノードがある場合は処理を実行
-                    result = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION);
+                    // プレビュー用なので linear=false (sRGB色空間) でGUI表示に適合
+                    result = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION, false);
                 }
                 else
                 {
                     // ノードがない場合はソーステクスチャをそのまま使用（リサイズのみ）
-                    result = ResizeTexture(sourceTexture, PREVIEW_RESOLUTION);
+                    // プレビュー用なので linear=false (sRGB色空間)
+                    result = ResizeTexture(sourceTexture, PREVIEW_RESOLUTION, false);
                 }
                 
                 if (result != null)
@@ -588,15 +590,16 @@ namespace UniTexEditor
         /// <summary>
         /// テクスチャをリサイズ（アスペクト比維持）
         /// </summary>
-        private Texture2D ResizeTexture(Texture2D source, int maxResolution)
+        /// <param name="linear">true=Linear色空間（保存用）、false=sRGB色空間（GUI表示用）</param>
+        private Texture2D ResizeTexture(Texture2D source, int maxResolution, bool linear = false)
         {
             if (source == null) return null;
             
             // 元の解像度が小さければそのまま
             if (source.width <= maxResolution && source.height <= maxResolution)
             {
-                // コピーを作成
-                Texture2D copy = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false);
+                // コピーを作成（色空間を指定）
+                Texture2D copy = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false, linear);
                 Graphics.CopyTexture(source, copy);
                 return copy;
             }
@@ -620,10 +623,10 @@ namespace UniTexEditor
             RenderTexture rt = RenderTexture.GetTemporary(newWidth, newHeight, 0, RenderTextureFormat.ARGB32);
             Graphics.Blit(source, rt);
             
-            // Linear色空間でTexture2Dを作成（ガンマ補正を適切に処理）
+            // 色空間を指定してTexture2Dを作成
             RenderTexture previous = RenderTexture.active;
             RenderTexture.active = rt;
-            Texture2D resized = new Texture2D(newWidth, newHeight, TextureFormat.RGBA32, false, true);
+            Texture2D resized = new Texture2D(newWidth, newHeight, TextureFormat.RGBA32, false, linear);
             resized.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
             resized.Apply();
             RenderTexture.active = previous;
@@ -710,7 +713,8 @@ namespace UniTexEditor
                 }
                 
                 // フル解像度で処理
-                fullResResult = processor.GetResultAsTexture2D();
+                // 保存用なので linear=true (Linear色空間) で正確な色を保存
+                fullResResult = processor.GetResultAsTexture2D(true);
             }
             catch (System.Exception e)
             {

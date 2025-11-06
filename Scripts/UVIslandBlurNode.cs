@@ -135,7 +135,7 @@ namespace UniTexEditor
         
         private Texture2D RenderTextureToTexture2D(RenderTexture rt)
         {
-            // Linear色空間でTexture2Dを作成（ガンマ補正を適切に処理）
+            // 境界マスク生成用なので Linear 色空間で正確な値を保持
             Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false, true);
             
             RenderTexture previous = RenderTexture.active;
