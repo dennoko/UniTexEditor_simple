@@ -68,6 +68,8 @@ namespace UniTexEditor
         private Vector2 previewScrollPosition;
         private const float PREVIEW_MAX_SIZE = 512f; // プレビュー最大サイズ
         private const int PREVIEW_RESOLUTION = 512; // プレビュー計算解像度
+    private bool previewDirty;
+    private bool previewUpdateScheduled;
         
         [MenuItem("Window/UniTex Editor")]
         public static void ShowWindow()
@@ -91,6 +93,10 @@ namespace UniTexEditor
                 DestroyImmediate(resultPreview);
                 resultPreview = null;
             }
+
+            EditorApplication.delayCall -= ProcessPendingPreview;
+            previewUpdateScheduled = false;
+            previewDirty = false;
         }
         
         private void OnGUI()
@@ -114,7 +120,7 @@ namespace UniTexEditor
                     UpdateDefaultOutputPath();
                 }
                 
-                if (autoPreview) UpdatePreview();
+                RequestPreviewUpdate();
             }
             
             EditorGUILayout.Space();
@@ -126,7 +132,7 @@ namespace UniTexEditor
             if (EditorGUI.EndChangeCheck())
             {
                 processor.MaskTexture = maskTexture;
-                if (autoPreview) UpdatePreview();
+                RequestPreviewUpdate();
             }
             invertMask = EditorGUILayout.Toggle("マスク反転", invertMask);
             maskStrength = EditorGUILayout.Slider("マスク強度", maskStrength, 0f, 1f);
@@ -160,7 +166,7 @@ namespace UniTexEditor
                     }
                 }
                 
-                if (autoPreview) UpdatePreview();
+                RequestPreviewUpdate();
             }
             
             if (sourceMesh != null)
@@ -182,9 +188,9 @@ namespace UniTexEditor
                 brightness = EditorGUILayout.Slider("明度", brightness, 0f, 2f);
                 gamma = EditorGUILayout.Slider("ガンマ", gamma, 0.1f, 3f);
                 
-                if (EditorGUI.EndChangeCheck() && autoPreview)
+                if (EditorGUI.EndChangeCheck())
                 {
-                    UpdatePreview();
+                    RequestPreviewUpdate();
                 }
                 
                 EditorGUI.indentLevel--;
@@ -208,9 +214,9 @@ namespace UniTexEditor
                     hdrColor = EditorGUILayout.ColorField(new GUIContent("HDR カラー"), hdrColor, true, true, true);
                 }
                 
-                if (EditorGUI.EndChangeCheck() && autoPreview)
+                if (EditorGUI.EndChangeCheck())
                 {
-                    UpdatePreview();
+                    RequestPreviewUpdate();
                 }
                 
                 EditorGUI.indentLevel--;
@@ -241,9 +247,9 @@ namespace UniTexEditor
                 sharpenKernelSize = EditorGUILayout.IntSlider("カーネルサイズ", sharpenKernelSize, 3, 9);
                 if (sharpenKernelSize % 2 == 0) sharpenKernelSize++; // 奇数に強制
                 
-                if (EditorGUI.EndChangeCheck() && autoPreview)
+                if (EditorGUI.EndChangeCheck())
                 {
-                    UpdatePreview();
+                    RequestPreviewUpdate();
                 }
                 
                 EditorGUI.indentLevel--;
@@ -262,9 +268,9 @@ namespace UniTexEditor
                 blurRadius = EditorGUILayout.IntSlider("ブラー半径", blurRadius, 1, 20);
                 blurSigma = EditorGUILayout.Slider("ブラーシグマ", blurSigma, 0.5f, 10f);
                 
-                if (EditorGUI.EndChangeCheck() && autoPreview)
+                if (EditorGUI.EndChangeCheck())
                 {
-                    UpdatePreview();
+                    RequestPreviewUpdate();
                 }
                 
                 EditorGUI.indentLevel--;
@@ -314,9 +320,9 @@ namespace UniTexEditor
                     EditorGUI.indentLevel--;
                 }
                 
-                if (EditorGUI.EndChangeCheck() && autoPreview)
+                if (EditorGUI.EndChangeCheck())
                 {
-                    UpdatePreview();
+                    RequestPreviewUpdate();
                 }
                 
                 EditorGUI.indentLevel--;
@@ -327,11 +333,30 @@ namespace UniTexEditor
             
             // ===== プレビューセクション =====
             GUILayout.Label("プレビュー", EditorStyles.boldLabel);
-            autoPreview = EditorGUILayout.Toggle("自動プレビュー", autoPreview);
+            bool newAutoPreview = EditorGUILayout.Toggle("自動プレビュー", autoPreview);
+            if (newAutoPreview != autoPreview)
+            {
+                autoPreview = newAutoPreview;
+                if (autoPreview)
+                {
+                    RequestPreviewUpdate(true);
+                }
+                else
+                {
+                    EditorApplication.delayCall -= ProcessPendingPreview;
+                    previewUpdateScheduled = false;
+                    Repaint();
+                }
+            }
             
             if (!autoPreview && GUILayout.Button("プレビュー更新"))
             {
                 UpdatePreview();
+            }
+
+            if (!autoPreview && previewDirty)
+            {
+                EditorGUILayout.HelpBox("プレビューを更新すると最新の結果が表示されます。", MessageType.Info);
             }
             
             if (resultPreview != null)
@@ -473,10 +498,61 @@ namespace UniTexEditor
                 }
             }
         }
+
+        /// <summary>
+        /// プレビューの再計算をリクエスト
+        /// 変更検知から直接呼び出し、OnGUI処理終了後に確実にリビルドさせる
+        /// </summary>
+        private void RequestPreviewUpdate(bool forceImmediate = false)
+        {
+            previewDirty = true;
+
+            if (forceImmediate)
+            {
+                UpdatePreview();
+                return;
+            }
+
+            if (!autoPreview)
+            {
+                Repaint();
+                return;
+            }
+
+            if (previewUpdateScheduled)
+            {
+                return;
+            }
+
+            previewUpdateScheduled = true;
+            EditorApplication.delayCall += ProcessPendingPreview;
+        }
+
+        /// <summary>
+        /// 遅延呼び出しで実際のプレビュー再計算を行う
+        /// </summary>
+        private void ProcessPendingPreview()
+        {
+            previewUpdateScheduled = false;
+
+            if (!autoPreview || !previewDirty)
+            {
+                return;
+            }
+
+            UpdatePreview();
+        }
         
         private void UpdatePreview()
         {
-            if (sourceTexture == null) return;
+            EditorApplication.delayCall -= ProcessPendingPreview;
+            previewUpdateScheduled = false;
+
+            if (sourceTexture == null)
+            {
+                previewDirty = false;
+                return;
+            }
             
             // 既存のプレビューを破棄
             if (resultPreview != null)
@@ -484,6 +560,8 @@ namespace UniTexEditor
                 DestroyImmediate(resultPreview);
                 resultPreview = null;
             }
+
+            previewDirty = false;
             
             // ノードをクリアして再構築
             processor.ClearNodes();
@@ -751,10 +829,7 @@ namespace UniTexEditor
             greenCurve = AnimationCurve.Linear(0, 0, 1, 1);
             blueCurve = AnimationCurve.Linear(0, 0, 1, 1);
             
-            if (autoPreview)
-            {
-                UpdatePreview();
-            }
+            RequestPreviewUpdate();
         }
         
         /// <summary>
