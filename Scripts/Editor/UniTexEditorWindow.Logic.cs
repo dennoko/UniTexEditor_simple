@@ -207,7 +207,7 @@ namespace UniTexEditor
         {
             if (sourceTexture == null)
             {
-                EditorUtility.DisplayDialog("エラー", "ソーステクスチャが指定されていません。", "OK");
+                SetStatus("Error: Source Texture is not set.", StatusType.Error);
                 return;
             }
             
@@ -361,22 +361,30 @@ namespace UniTexEditor
             File.WriteAllBytes(savePath, bytes);
             AssetDatabase.Refresh();
             
-            DestroyImmediate(textureToSave);
+            AssetDatabase.Refresh();
             
-            EditorUtility.DisplayDialog("成功", $"テクスチャを保存しました:\n{savePath}", "OK");
+            SetStatus($"Success: Saved to {savePath}", StatusType.Success);
         }
         
         private void ResetParameters()
         {
+            // パラメータのリセット
             hueShift = 0f;
             saturation = 1f;
             brightness = 1f;
             gamma = 1f;
+            
             ccTargetColor = Color.white;
             ccBlendMode = BlendMode.Normal;
             ccBlendOpacity = 0f;
+            
+            blendTexture = null;
+            blendMaskTexture = null;
+            blendMode = BlendMode.Normal;
             blendStrength = 1f;
             hdrColor = Color.white;
+            
+            sharpenMode = SharpenMode.Sharpen;
             sharpenStrength = 1f;
             sharpenKernelSize = 5;
             
@@ -398,7 +406,19 @@ namespace UniTexEditor
             cmOutBlue = ChannelSource.Blue;
             cmOutAlpha = ChannelSource.Alpha;
             
+            SetStatus("Parameters have been reset.", StatusType.Info);
+            
             RequestPreviewUpdate();
+        }
+        
+        /// <summary>
+        /// ステータスバーの表示を設定
+        /// </summary>
+        private void SetStatus(string message, StatusType type)
+        {
+            statusMessage = message;
+            statusType = type;
+            // Repaint() は呼び出し元で必要な場合に行うか、Unityのイベントサイクルに任せる
         }
         
 

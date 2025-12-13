@@ -44,6 +44,9 @@ namespace UniTexEditor
             
             // フッター（アクションボタン）
             DrawFooter();
+            
+            // ステータスバー
+            DrawStatusBar();
         }
         
         private void DrawHeader()
@@ -180,6 +183,15 @@ namespace UniTexEditor
                 {
                     RequestPreviewUpdate();
                 }
+            }, () => {
+                // Reset Logic
+                hueShift = 0f;
+                saturation = 1f;
+                brightness = 1f;
+                gamma = 1f;
+                ccTargetColor = Color.white;
+                ccBlendMode = BlendMode.Normal;
+                ccBlendOpacity = 0f;
             });
             
             // --- Blend ---
@@ -200,6 +212,13 @@ namespace UniTexEditor
                 {
                     RequestPreviewUpdate();
                 }
+            }, () => {
+                // Reset Logic
+                blendTexture = null;
+                blendMaskTexture = null;
+                blendMode = BlendMode.Normal;
+                blendStrength = 1f;
+                hdrColor = Color.white;
             });
             
             // --- Tone Curve ---
@@ -236,6 +255,16 @@ namespace UniTexEditor
                 {
                     RequestPreviewUpdate();
                 }
+            }, () => {
+                // Reset Logic
+                useRGBCurve = true;
+                useRedCurve = false;
+                useGreenCurve = false;
+                useBlueCurve = false;
+                rgbCurve = AnimationCurve.Linear(0, 0, 1, 1);
+                redCurve = AnimationCurve.Linear(0, 0, 1, 1);
+                greenCurve = AnimationCurve.Linear(0, 0, 1, 1);
+                blueCurve = AnimationCurve.Linear(0, 0, 1, 1);
             });
 
             // --- Sharpen / Blur ---
@@ -260,6 +289,11 @@ namespace UniTexEditor
                 {
                     RequestPreviewUpdate();
                 }
+            }, () => {
+                // Reset Logic
+                sharpenMode = SharpenMode.Sharpen;
+                sharpenStrength = 1f;
+                sharpenKernelSize = 5;
             });
             
             // --- Advanced Options ---
@@ -330,6 +364,20 @@ namespace UniTexEditor
                         RequestPreviewUpdate();
                     }
                 }
+            }, () => {
+                // Reset Logic
+                showLevels = false;
+                lvlMinInput = 0f;
+                lvlMaxInput = 1f;
+                lvlMinOutput = 0f;
+                lvlMaxOutput = 1f;
+                lvlMidGamma = 1f;
+                
+                showChannelMixer = false;
+                cmOutRed = ChannelSource.Red;
+                cmOutGreen = ChannelSource.Green;
+                cmOutBlue = ChannelSource.Blue;
+                cmOutAlpha = ChannelSource.Alpha;
             });
             
             GUILayout.EndVertical();
@@ -403,18 +451,40 @@ namespace UniTexEditor
             GUILayout.EndVertical();
         }
 
-        // Helper for toggleable section
-        private void DrawToggleSection(string title, ref bool toggle, System.Action content)
+        // Helper for toggleable section with Reset button
+        private void DrawToggleSection(string title, ref bool toggle, System.Action content, System.Action onReset = null)
         {
             GUILayout.BeginVertical(boxStyle);
             
-            // トグル付きヘッダー
-            bool newToggle = EditorGUILayout.ToggleLeft(title, toggle, titleStyle);
-            if (newToggle != toggle)
+            // トグル付きヘッダー（リセットボタン付き）
+            GUILayout.BeginHorizontal();
+            
+            EditorGUI.BeginChangeCheck();
+            bool newToggle = EditorGUILayout.ToggleLeft(title, toggle, titleStyle, GUILayout.ExpandWidth(true));
+            if (EditorGUI.EndChangeCheck())
             {
                 toggle = newToggle;
                 RequestPreviewUpdate(); // ON/OFF切り替え時に更新
             }
+
+            // リセットボタン（コールバックがある場合のみ表示）
+            if (onReset != null)
+            {
+                // リセットアイコンがあればもっと良いが、テキストで実装
+                if (GUILayout.Button("Reset", EditorStyles.miniButton, GUILayout.Width(50)))
+                {
+                    // リセット実行
+                    onReset.Invoke();
+                    
+                    // 値が変わったはずなのでプレビュー更新
+                    RequestPreviewUpdate();
+                    
+                    // GUIフォーカスを外す（数値入力中などの場合、古い値が残るのを防ぐ）
+                    GUI.FocusControl(null);
+                }
+            }
+            
+            GUILayout.EndHorizontal();
             
             if (toggle)
             {
@@ -425,6 +495,37 @@ namespace UniTexEditor
             GUILayout.EndVertical();
         }
         
+        /// <summary>
+        /// ステータスバーを描画
+        /// </summary>
+        private void DrawStatusBar()
+        {
+            Color backgroundColor = GUI.backgroundColor;
+            
+            // 色の設定 (彩度高め)
+            switch (statusType)
+            {
+                case StatusType.Success:
+                    GUI.backgroundColor = new Color(0.2f, 0.8f, 0.2f); // 鮮やかな緑
+                    break;
+                case StatusType.Error:
+                    GUI.backgroundColor = new Color(0.9f, 0.3f, 0.3f); // 鮮やかな赤
+                    break;
+                case StatusType.Info:
+                default:
+                    GUI.backgroundColor = Color.gray;
+                    break;
+            }
+
+            // メッセージ表示
+            // 空の場合は高さだけ確保して表示
+            string displayMessage = string.IsNullOrEmpty(statusMessage) ? "Ready" : statusMessage;
+            EditorGUILayout.HelpBox(displayMessage, MessageType.None);
+            
+            // 色を戻す
+            GUI.backgroundColor = backgroundColor;
+        }
+
         /// <summary>
         /// チェッカーボード背景を描画（透明度確認用）
         /// </summary>

@@ -87,6 +87,17 @@ namespace UniTexEditor
         private bool previewDirty;
         private bool previewUpdateScheduled;
         
+        // ステータスバー
+        public enum StatusType
+        {
+            None,
+            Info,
+            Success,
+            Error
+        }
+        private string statusMessage = "Ready";
+        private StatusType statusType = StatusType.Info;
+        
         [MenuItem("Tools/UniTex Editor")]
         public static void ShowWindow()
         {
