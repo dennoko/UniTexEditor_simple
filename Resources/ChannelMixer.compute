@@ -1,0 +1,62 @@
+// ChannelMixer.compute
+// チャンネルの入れ替え・ミキシングを行う
+
+#pragma kernel CSMain
+
+Texture2D<float4> Source;
+RWTexture2D<float4> Result;
+Texture2D<float> Mask;
+
+int UseMask;
+
+// 各出力チャンネルのソースを指定
+// 0: Red, 1: Green, 2: Blue, 3: Alpha, 4: One (1.0), 5: Zero (0.0)
+int OutR;
+int OutG;
+int OutB;
+int OutA;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Result.GetDimensions(width, height);
+    
+    if (id.x >= width || id.y >= height)
+        return;
+        
+    float4 color = Source[id.xy];
+    
+    // ソース値の配列
+    // 0:R, 1:G, 2:B, 3:A, 4:1.0, 5:0.0
+    float values[6];
+    values[0] = color.r;
+    values[1] = color.g;
+    values[2] = color.b;
+    values[3] = color.a;
+    values[4] = 1.0;
+    values[5] = 0.0;
+    
+    float4 newColor;
+    newColor.r = values[OutR];
+    newColor.g = values[OutG];
+    newColor.b = values[OutB];
+    newColor.a = values[OutA];
+    
+    // マスク処理
+    if (UseMask > 0)
+    {
+        uint maskWidth, maskHeight;
+        Mask.GetDimensions(maskWidth, maskHeight);
+        
+        uint2 maskCoord = uint2(
+            (id.x * maskWidth) / width,
+            (id.y * maskHeight) / height
+        );
+        float maskVal = Mask[maskCoord];
+        
+        newColor = lerp(color, newColor, maskVal);
+    }
+    
+    Result[id.xy] = newColor;
+}

@@ -1,0 +1,44 @@
+// MaskProcess.compute
+// マスクテクスチャの前処理（反転、強度調整）を行う
+
+#pragma kernel CSMain
+
+Texture2D<float> Source;
+RWTexture2D<float> Result;
+
+int Invert;
+float Strength;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Result.GetDimensions(width, height);
+    
+    if (id.x >= width || id.y >= height)
+        return;
+        
+    // ソースからサンプリング（サイズが異なる場合は最近傍）
+    uint srcWidth, srcHeight;
+    Source.GetDimensions(srcWidth, srcHeight);
+    
+    uint2 srcCoord = uint2(
+        (id.x * srcWidth) / width,
+        (id.y * srcHeight) / height
+    );
+    
+    float v = Source[srcCoord];
+    
+    // 反転
+    if (Invert > 0)
+    {
+        v = 1.0 - v;
+    }
+    
+    // 強度適用
+    // Strength 1.0 = マスクそのまま
+    // Strength 0.0 = マスクなし（すべて1.0＝効果を全適用）
+    v = lerp(1.0, v, Strength);
+    
+    Result[id.xy] = v;
+}

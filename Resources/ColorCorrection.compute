@@ -12,6 +12,9 @@ float HueShift;      // -180 ~ 180
 float Saturation;    // 0 ~ 2
 float Brightness;    // 0 ~ 2
 float Gamma;         // 0.1 ~ 3
+float4 TargetColor;  // Blending target color
+int BlendMode;       // 0:Normal, 1:Multiply, 2:Add, 3:Screen, 4:Overlay
+float BlendOpacity;  // 0 ~ 1
 
 // RGB to HSV conversion
 float3 RGBtoHSV(float3 rgb)
@@ -78,6 +81,45 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     
     // Gamma補正
     adjustedColor = pow(abs(adjustedColor), Gamma);
+    
+    // カラーブレンド (Target Color Blending)
+    if (BlendOpacity > 0.0)
+    {
+        float3 blendResult = adjustedColor;
+        float3 src = adjustedColor;
+        float3 dst = TargetColor.rgb;
+        float alpha = BlendOpacity * TargetColor.a;
+
+        if (BlendMode == 0) // Normal
+        {
+            blendResult = lerp(src, dst, alpha);
+        }
+        else if (BlendMode == 1) // Multiply
+        {
+            blendResult = lerp(src, src * dst, alpha);
+        }
+        else if (BlendMode == 2) // Add
+        {
+            blendResult = lerp(src, src + dst, alpha);
+        }
+        else if (BlendMode == 3) // Screen
+        {
+            float3 screen = 1.0 - (1.0 - src) * (1.0 - dst);
+            blendResult = lerp(src, screen, alpha);
+        }
+        else if (BlendMode == 4) // Overlay
+        {
+            float3 overlay;
+            overlay.r = (src.r < 0.5) ? (2.0 * src.r * dst.r) : (1.0 - 2.0 * (1.0 - src.r) * (1.0 - dst.r));
+            overlay.g = (src.g < 0.5) ? (2.0 * src.g * dst.g) : (1.0 - 2.0 * (1.0 - src.g) * (1.0 - dst.g));
+            overlay.b = (src.b < 0.5) ? (2.0 * src.b * dst.b) : (1.0 - 2.0 * (1.0 - src.b) * (1.0 - dst.b));
+            blendResult = lerp(src, overlay, alpha);
+        }
+        // HDR modes (5, 6) are skipped for simple color blending as typical constant color blending doesn't usually use them, but can be added if needed.
+        // For now supporting basic modes.
+        
+        adjustedColor = blendResult;
+    }
     
     // マスクを適用（元の色とブレンド）
     adjustedColor = lerp(color.rgb, adjustedColor, maskValue);

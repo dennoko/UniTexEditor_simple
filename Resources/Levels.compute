@@ -1,0 +1,61 @@
+// Levels.compute
+// レベル補正を行う
+
+#pragma kernel CSMain
+
+Texture2D<float4> Source;
+RWTexture2D<float4> Result;
+Texture2D<float> Mask;
+
+int UseMask;
+
+float MinInput;  // 黒点 (0.0~1.0)
+float MaxInput;  // 白点 (0.0~1.0)
+float MinOutput; // 出力レベル黒 (0.0~1.0)
+float MaxOutput; // 出力レベル白 (0.0~1.0)
+float MidGamma;  // 中間調ガンマ
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Result.GetDimensions(width, height);
+    
+    if (id.x >= width || id.y >= height)
+        return;
+        
+    float4 color = Source[id.xy];
+    float3 c = color.rgb;
+    
+    // 入力レベル調整: (c - minIn) / (maxIn - minIn)
+    // 0徐算回避
+    float range = max(MaxInput - MinInput, 0.0001);
+    c = max(0.0, c - MinInput) / range;
+    c = saturate(c);
+    
+    // ガンマ補正: pow(c, 1.0 / gamma)
+    c = pow(c, 1.0 / max(MidGamma, 0.0001));
+    
+    // 出力レベル調整: c * (maxOut - minOut) + minOut
+    c = c * (MaxOutput - MinOutput) + MinOutput;
+    c = saturate(c);
+    
+    float4 resultColor = float4(c, color.a);
+    
+    // マスク処理
+    if (UseMask > 0)
+    {
+        uint maskWidth, maskHeight;
+        Mask.GetDimensions(maskWidth, maskHeight);
+        
+        uint2 maskCoord = uint2(
+            (id.x * maskWidth) / width,
+            (id.y * maskHeight) / height
+        );
+        float maskVal = Mask[maskCoord];
+        
+        resultColor = lerp(color, resultColor, maskVal);
+    }
+    
+    Result[id.xy] = resultColor;
+}

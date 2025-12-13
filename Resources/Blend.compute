@@ -5,10 +5,12 @@
 
 Texture2D<float4> Source;
 Texture2D<float4> BlendTexture;
+Texture2D<float4> BlendMask;
 RWTexture2D<float4> Result;
 Texture2D<float> Mask;
 
 int UseMask;
+int UseBlendMask;
 int BlendMode;       // 0:Normal, 1:Multiply, 2:Add, 3:Screen, 4:Overlay, 5:HDRAdd, 6:HDRMultiply
 float BlendStrength; // 0 ~ 1
 float4 HDRColor;     // HDR合成用の色
@@ -74,6 +76,20 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     );
     float4 blendColor = BlendTexture[blendCoord];
     
+    // ブレンド用マスクを取得（0=効果なし, 1=最大）
+    float blendMaskValue = 1.0;
+    if (UseBlendMask > 0)
+    {
+        uint maskWidth, maskHeight;
+        BlendMask.GetDimensions(maskWidth, maskHeight);
+        uint2 maskCoord = uint2(
+            (id.x * maskWidth) / width,
+            (id.y * maskHeight) / height
+        );
+        float3 maskRgb = BlendMask[maskCoord].rgb;
+        blendMaskValue = saturate(dot(maskRgb, float3(0.299, 0.587, 0.114)));
+    }
+    
     // マスクを取得（オプション）
     float maskValue = 1.0;
     if (UseMask > 0)
@@ -85,34 +101,31 @@ void CSMain (uint3 id : SV_DispatchThreadID)
             (id.x * maskWidth) / width,
             (id.y * maskHeight) / height
         );
-        maskValue = Mask[maskCoord];
+        maskValue = saturate(Mask[maskCoord]);
     }
     
     // ブレンドモードに応じて合成
-    float3 blendedColor;
+    float3 blendResult;
     
     if (BlendMode == 0)
-        blendedColor = BlendNormal(baseColor.rgb, blendColor.rgb);
+        blendResult = BlendNormal(baseColor.rgb, blendColor.rgb);
     else if (BlendMode == 1)
-        blendedColor = BlendMultiply(baseColor.rgb, blendColor.rgb);
+        blendResult = BlendMultiply(baseColor.rgb, blendColor.rgb);
     else if (BlendMode == 2)
-        blendedColor = BlendAdd(baseColor.rgb, blendColor.rgb);
+        blendResult = BlendAdd(baseColor.rgb, blendColor.rgb);
     else if (BlendMode == 3)
-        blendedColor = BlendScreen(baseColor.rgb, blendColor.rgb);
+        blendResult = BlendScreen(baseColor.rgb, blendColor.rgb);
     else if (BlendMode == 4)
-        blendedColor = BlendOverlay(baseColor.rgb, blendColor.rgb);
+        blendResult = BlendOverlay(baseColor.rgb, blendColor.rgb);
     else if (BlendMode == 5)
-        blendedColor = BlendHDRAdd(baseColor.rgb, blendColor.rgb, HDRColor);
+        blendResult = BlendHDRAdd(baseColor.rgb, blendColor.rgb, HDRColor);
     else if (BlendMode == 6)
-        blendedColor = BlendHDRMultiply(baseColor.rgb, blendColor.rgb, HDRColor);
+        blendResult = BlendHDRMultiply(baseColor.rgb, blendColor.rgb, HDRColor);
     else
-        blendedColor = baseColor.rgb;
+        blendResult = baseColor.rgb;
     
-    // ブレンド強度を適用
-    blendedColor = lerp(baseColor.rgb, blendedColor, BlendStrength);
+    float finalWeight = saturate(BlendStrength * blendMaskValue * maskValue);
+    float3 finalColor = lerp(baseColor.rgb, blendResult, finalWeight);
     
-    // マスクを適用
-    blendedColor = lerp(baseColor.rgb, blendedColor, maskValue);
-    
-    Result[id.xy] = float4(blendedColor, baseColor.a);
+    Result[id.xy] = float4(finalColor, baseColor.a);
 }

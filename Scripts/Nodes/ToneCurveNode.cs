@@ -62,23 +62,11 @@ namespace UniTexEditor
                 tempRT.Create();
             }
             
-            // カーブをルックアップテーブルに変換
-            if (useRGBCurve)
-            {
-                UpdateCurveBuffer(ref rgbBuffer, rgbCurve);
-            }
-            if (useRedCurve)
-            {
-                UpdateCurveBuffer(ref redBuffer, redCurve);
-            }
-            if (useGreenCurve)
-            {
-                UpdateCurveBuffer(ref greenBuffer, greenCurve);
-            }
-            if (useBlueCurve)
-            {
-                UpdateCurveBuffer(ref blueBuffer, blueCurve);
-            }
+            // すべてのカーブバッファを初期化・更新（使用しないものもデフォルト値で埋める）
+            UpdateCurveBuffer(ref rgbBuffer, useRGBCurve ? rgbCurve : AnimationCurve.Linear(0, 0, 1, 1));
+            UpdateCurveBuffer(ref redBuffer, useRedCurve ? redCurve : AnimationCurve.Linear(0, 0, 1, 1));
+            UpdateCurveBuffer(ref greenBuffer, useGreenCurve ? greenCurve : AnimationCurve.Linear(0, 0, 1, 1));
+            UpdateCurveBuffer(ref blueBuffer, useBlueCurve ? blueCurve : AnimationCurve.Linear(0, 0, 1, 1));
             
             int kernelIndex = toneCurveShader.FindKernel("CSMain");
             
@@ -100,20 +88,16 @@ namespace UniTexEditor
                 RenderTexture.ReleaseTemporary(dummyMask);
             }
             
-            // カーブバッファをセット
+            // カーブバッファをセット（常にすべて設定）
             toneCurveShader.SetInt("UseRGBCurve", useRGBCurve ? 1 : 0);
             toneCurveShader.SetInt("UseRedCurve", useRedCurve ? 1 : 0);
             toneCurveShader.SetInt("UseGreenCurve", useGreenCurve ? 1 : 0);
             toneCurveShader.SetInt("UseBlueCurve", useBlueCurve ? 1 : 0);
             
-            if (useRGBCurve && rgbBuffer != null)
-                toneCurveShader.SetBuffer(kernelIndex, "RGBCurve", rgbBuffer);
-            if (useRedCurve && redBuffer != null)
-                toneCurveShader.SetBuffer(kernelIndex, "RedCurve", redBuffer);
-            if (useGreenCurve && greenBuffer != null)
-                toneCurveShader.SetBuffer(kernelIndex, "GreenCurve", greenBuffer);
-            if (useBlueCurve && blueBuffer != null)
-                toneCurveShader.SetBuffer(kernelIndex, "BlueCurve", blueBuffer);
+            toneCurveShader.SetBuffer(kernelIndex, "RGBCurve", rgbBuffer);
+            toneCurveShader.SetBuffer(kernelIndex, "RedCurve", redBuffer);
+            toneCurveShader.SetBuffer(kernelIndex, "GreenCurve", greenBuffer);
+            toneCurveShader.SetBuffer(kernelIndex, "BlueCurve", blueBuffer);
             
             // ディスパッチ
             int threadGroupsX = Mathf.CeilToInt(source.width / 8.0f);

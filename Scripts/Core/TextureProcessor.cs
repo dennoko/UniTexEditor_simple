@@ -29,6 +29,9 @@ namespace UniTexEditor
             get => maskTexture;
             set => maskTexture = value;
         }
+
+        public bool InvertMask { get; set; } = false;
+        public float MaskStrength { get; set; } = 1.0f;
         
         public List<ProcessingNode> Nodes => nodes;
         
@@ -97,14 +100,33 @@ namespace UniTexEditor
                 InitializeWorkingTexture();
             }
             
-            // マスクをRenderTextureに変換（必要な場合）
+            // マスクをRenderTextureに変換・前処理
             RenderTexture maskRT = null;
             if (maskTexture != null)
             {
                 maskRT = new RenderTexture(maskTexture.width, maskTexture.height, 0, RenderTextureFormat.RFloat);
                 maskRT.enableRandomWrite = true;
                 maskRT.Create();
-                Graphics.Blit(maskTexture, maskRT);
+                
+                // MaskProcess コンピュートシェーダーを使用
+                var maskShader = Resources.Load<ComputeShader>("MaskProcess");
+                if (maskShader != null)
+                {
+                    int kernel = maskShader.FindKernel("CSMain");
+                    maskShader.SetTexture(kernel, "Source", maskTexture);
+                    maskShader.SetTexture(kernel, "Result", maskRT);
+                    maskShader.SetInt("Invert", InvertMask ? 1 : 0);
+                    maskShader.SetFloat("Strength", MaskStrength);
+                    
+                    int tx = Mathf.CeilToInt(maskTexture.width / 8.0f);
+                    int ty = Mathf.CeilToInt(maskTexture.height / 8.0f);
+                    maskShader.Dispatch(kernel, tx, ty, 1);
+                }
+                else
+                {
+                    // フォールバック: 単純コピー
+                    Graphics.Blit(maskTexture, maskRT);
+                }
             }
             
             // 各ノードを順番に適用
