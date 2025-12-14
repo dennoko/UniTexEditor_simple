@@ -106,7 +106,9 @@ namespace UniTexEditor
                     blendMaskTexture = blendMaskTexture,
                     blendMode = blendMode,
                     blendStrength = blendStrength,
-                    hdrColor = hdrColor
+                    tiling = blendTiling,
+                    scale = blendScale,
+                    offset = blendOffset
                 };
                 processor.AddNode(blendNode);
                 hasNodes = true;
@@ -244,7 +246,9 @@ namespace UniTexEditor
                         blendMaskTexture = blendMaskTexture,
                         blendMode = blendMode,
                         blendStrength = blendStrength,
-                        hdrColor = hdrColor
+                        tiling = blendTiling,
+                        scale = blendScale,
+                        offset = blendOffset
                     };
                     processor.AddNode(blendNode);
                 }
@@ -317,19 +321,10 @@ namespace UniTexEditor
                 return;
             }
             
-            // 色空間変換（オプション）
-            Texture2D textureToSave = fullResResult;
-            if (convertToSRGBOnSave)
-            {
-                // Linear → sRGB 変換
-                textureToSave = TextureProcessor.ConvertLinearToSRGB(fullResResult);
-                DestroyImmediate(fullResResult); // Linear版は破棄
-                Debug.Log("保存用にLinear→sRGB変換を実行しました");
-            }
-            else
-            {
-                Debug.Log("Linear色空間のまま保存します");
-            }
+            // 色空間変換 (Always sRGB for saving to file to match viewer expectation)
+            Texture2D textureToSave = TextureProcessor.ConvertLinearToSRGB(fullResResult);
+            DestroyImmediate(fullResResult); // Linear版は破棄
+            Debug.Log("保存用にLinear→sRGB変換を実行しました");
             
             // 保存処理
             byte[] bytes = textureToSave.EncodeToPNG();
@@ -382,7 +377,9 @@ namespace UniTexEditor
             blendMaskTexture = null;
             blendMode = BlendMode.Normal;
             blendStrength = 1f;
-            hdrColor = Color.white;
+            blendTiling = true;
+            blendScale = Vector2.one;
+            blendOffset = Vector2.zero;
             
             sharpenMode = SharpenMode.Sharpen;
             sharpenStrength = 1f;
@@ -421,6 +418,62 @@ namespace UniTexEditor
             // Repaint() は呼び出し元で必要な場合に行うか、Unityのイベントサイクルに任せる
         }
         
+
+        /// <summary>
+        /// マスク画像を反転して保存
+        /// </summary>
+        private void SaveInvertedMask()
+        {
+            if (maskTexture == null)
+            {
+                // Localization key 'error_no_mask' might not exist, using hardcoded fallback or need to add it.
+                // Checking ja.json, "error_no_mask" is not there. I should add it or use a string.
+                // Using hardcoded for now or just generic error. "Mask Texture is not set."
+                EditorUtility.DisplayDialog("Error", "Mask Texture is not set.", "OK");
+                return;
+            }
+
+            string defaultName = maskTexture.name + "_inverted";
+            string path = EditorUtility.SaveFilePanel("Save Inverted Mask", "Assets", defaultName, "png");
+
+            if (string.IsNullOrEmpty(path)) return;
+
+            // マスク処理用の一時RenderTextureを作成
+            RenderTexture rt = RenderTexture.GetTemporary(maskTexture.width, maskTexture.height, 0, RenderTextureFormat.RFloat);
+            rt.enableRandomWrite = true;
+            rt.Create();
+
+            // ComputeShaderで反転処理
+            var maskShader = Resources.Load<ComputeShader>("MaskProcess");
+            if (maskShader != null)
+            {
+                int kernel = maskShader.FindKernel("CSMain");
+                maskShader.SetTexture(kernel, "Source", maskTexture);
+                maskShader.SetTexture(kernel, "Result", rt);
+                maskShader.SetInt("Invert", 1); // 強制反転
+                maskShader.SetFloat("Strength", 1.0f); // 強度100%
+
+                int tx = Mathf.CeilToInt(maskTexture.width / 8.0f);
+                int ty = Mathf.CeilToInt(maskTexture.height / 8.0f);
+                maskShader.Dispatch(kernel, tx, ty, 1);
+            }
+            else
+            {
+                Debug.LogWarning("MaskProcess compute shader not found.");
+            }
+
+            // Texture2Dに変換
+            Texture2D result = TextureProcessor.RenderTextureToTexture2D(rt);
+            RenderTexture.ReleaseTemporary(rt);
+
+            // 保存
+            byte[] bytes = result.EncodeToPNG();
+            File.WriteAllBytes(path, bytes);
+            DestroyImmediate(result);
+
+            AssetDatabase.Refresh();
+            SetStatus(Localization.GetText("msg_save_inverted_success") + Path.GetFileName(path), StatusType.Success);
+        }
 
         /// <summary>
         /// デフォルト出力パスを更新（ソーステクスチャと同じフォルダ）

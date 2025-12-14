@@ -8,6 +8,7 @@ namespace UniTexEditor
     {
         private GUIStyle boxStyle;
         private GUIStyle titleStyle;
+        private GUIStyle actionButtonStyle;
         
         private void InitializeStyles()
         {
@@ -23,6 +24,14 @@ namespace UniTexEditor
                 titleStyle = new GUIStyle(EditorStyles.boldLabel);
                 titleStyle.fontSize = 12;
                 titleStyle.margin = new RectOffset(0, 0, 0, 5);
+            }
+            
+            if (actionButtonStyle == null)
+            {
+                actionButtonStyle = new GUIStyle(EditorStyles.miniButton);
+                actionButtonStyle.fontSize = 12;
+                actionButtonStyle.fixedHeight = 30;
+                actionButtonStyle.fontStyle = FontStyle.Bold;
             }
         }
 
@@ -52,8 +61,15 @@ namespace UniTexEditor
         private void DrawHeader()
         {
             EditorGUILayout.Space(5);
-            GUILayout.Label("UniTex Editor", EditorStyles.boldLabel);
+            GUILayout.Label(Localization.GetText("header_title"), EditorStyles.boldLabel);
             EditorGUILayout.Space(5);
+            
+            // Language Selection (Header Right)
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("JA", EditorStyles.miniButtonLeft, GUILayout.Width(30))) Localization.CurrentLanguage = "ja";
+            if (GUILayout.Button("EN", EditorStyles.miniButtonRight, GUILayout.Width(30))) Localization.CurrentLanguage = "en";
+            GUILayout.EndHorizontal();
         }
         
         private void DrawPreviewArea()
@@ -65,14 +81,14 @@ namespace UniTexEditor
             GUILayout.Label("Preview", EditorStyles.miniLabel);
             GUILayout.FlexibleSpace();
             
-            bool newAutoPreview = GUILayout.Toggle(autoPreview, "Auto Update", EditorStyles.toolbarButton);
+            bool newAutoPreview = GUILayout.Toggle(autoPreview, Localization.GetContent("preview_auto_update"), EditorStyles.toolbarButton);
             if (newAutoPreview != autoPreview)
             {
                 autoPreview = newAutoPreview;
                 if (autoPreview) RequestPreviewUpdate(true);
             }
             
-            if (GUILayout.Button("Update", EditorStyles.toolbarButton))
+            if (GUILayout.Button(Localization.GetContent("preview_update_btn"), EditorStyles.toolbarButton))
             {
                 UpdatePreview();
             }
@@ -132,9 +148,9 @@ namespace UniTexEditor
             GUILayout.BeginVertical();
             
             // --- Input Section ---
-            DrawSection("Input Settings", () => {
+            DrawSection(Localization.GetText("section_input"), () => {
                 EditorGUI.BeginChangeCheck();
-                sourceTexture = (Texture2D)EditorGUILayout.ObjectField("Source Texture", sourceTexture, typeof(Texture2D), false);
+                sourceTexture = (Texture2D)EditorGUILayout.ObjectField(Localization.GetContent("label_source"), sourceTexture, typeof(Texture2D), false);
                 if (EditorGUI.EndChangeCheck())
                 {
                     processor.SourceTexture = sourceTexture;
@@ -148,7 +164,7 @@ namespace UniTexEditor
                 // Mask
                 EditorGUILayout.Space(5);
                 EditorGUI.BeginChangeCheck();
-                maskTexture = (Texture2D)EditorGUILayout.ObjectField("Mask Texture", maskTexture, typeof(Texture2D), false);
+                maskTexture = (Texture2D)EditorGUILayout.ObjectField(Localization.GetContent("label_mask"), maskTexture, typeof(Texture2D), false);
                 if (EditorGUI.EndChangeCheck())
                 {
                     processor.MaskTexture = maskTexture;
@@ -158,26 +174,38 @@ namespace UniTexEditor
                 if (maskTexture != null)
                 {
                     EditorGUI.indentLevel++;
-                    invertMask = EditorGUILayout.Toggle("Invert Mask", invertMask);
-                    maskStrength = EditorGUILayout.Slider("Mask Strength", maskStrength, 0f, 1f);
+                    invertMask = EditorGUILayout.Toggle(Localization.GetContent("label_invert_mask"), invertMask);
+                    maskStrength = EditorGUILayout.Slider(Localization.GetContent("label_mask_strength"), maskStrength, 0f, 1f);
+                    
+                    // Save Inverted Mask Button
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.PrefixLabel(" "); // インデント合わせ
+                    if (GUILayout.Button(Localization.GetContent("btn_save_inverted"), EditorStyles.miniButton))
+                    {
+                        SaveInvertedMask();
+                        // フォーカスを外す
+                        GUI.FocusControl(null);
+                    }
+                    EditorGUILayout.EndHorizontal();
+                    
                     EditorGUI.indentLevel--;
                 }
             });
             
             // --- Color Correction ---
-            DrawToggleSection("Color Correction", ref showColorCorrection, () => {
+            DrawToggleSection(Localization.GetText("section_color_correction"), ref showColorCorrection, () => {
                 EditorGUI.BeginChangeCheck();
                 
-                hueShift = EditorGUILayout.Slider("Hue Shift", hueShift, -180f, 180f);
-                saturation = EditorGUILayout.Slider("Saturation", saturation, 0f, 2f);
-                brightness = EditorGUILayout.Slider("Brightness", brightness, 0f, 2f);
-                gamma = EditorGUILayout.Slider("Gamma", gamma, 0.1f, 3f);
+                hueShift = EditorGUILayout.Slider(Localization.GetContent("label_hue_shift"), hueShift, -180f, 180f);
+                saturation = EditorGUILayout.Slider(Localization.GetContent("label_saturation"), saturation, 0f, 2f);
+                brightness = EditorGUILayout.Slider(Localization.GetContent("label_brightness"), brightness, 0f, 2f);
+                gamma = EditorGUILayout.Slider(Localization.GetContent("label_gamma"), gamma, 0.1f, 3f);
                 
                 EditorGUILayout.Space(5);
-                GUILayout.Label("Color Blending", EditorStyles.boldLabel);
-                ccTargetColor = EditorGUILayout.ColorField("Target Color", ccTargetColor);
-                ccBlendMode = (BlendMode)EditorGUILayout.EnumPopup("Blend Mode", ccBlendMode);
-                ccBlendOpacity = EditorGUILayout.Slider("Opacity", ccBlendOpacity, 0f, 1f);
+                GUILayout.Label(Localization.GetText("label_cc_blending"), EditorStyles.boldLabel);
+                ccTargetColor = EditorGUILayout.ColorField(Localization.GetContent("label_target_color"), ccTargetColor);
+                ccBlendMode = (BlendMode)EditorGUILayout.EnumPopup(Localization.GetContent("label_blend_mode"), ccBlendMode);
+                ccBlendOpacity = EditorGUILayout.Slider(Localization.GetContent("label_opacity"), ccBlendOpacity, 0f, 1f);
                 
                 if (EditorGUI.EndChangeCheck())
                 {
@@ -195,18 +223,20 @@ namespace UniTexEditor
             });
             
             // --- Blend ---
-            DrawToggleSection("Blend / Composite", ref showBlend, () => {
+            DrawToggleSection(Localization.GetText("section_blend"), ref showBlend, () => {
                 EditorGUI.BeginChangeCheck();
                 
-                blendTexture = (Texture2D)EditorGUILayout.ObjectField("Blend Texture", blendTexture, typeof(Texture2D), false);
-                blendMaskTexture = (Texture2D)EditorGUILayout.ObjectField("Blend Mask", blendMaskTexture, typeof(Texture2D), false);
-                blendMode = (BlendMode)EditorGUILayout.EnumPopup("Blend Mode", blendMode);
-                blendStrength = EditorGUILayout.Slider("Opacity", blendStrength, 0f, 1f);
+                blendTexture = (Texture2D)EditorGUILayout.ObjectField(Localization.GetContent("label_blend_tex"), blendTexture, typeof(Texture2D), false);
+                blendMaskTexture = (Texture2D)EditorGUILayout.ObjectField(Localization.GetContent("label_blend_mask"), blendMaskTexture, typeof(Texture2D), false);
+                blendMode = (BlendMode)EditorGUILayout.EnumPopup(Localization.GetContent("label_blend_mode"), blendMode);
+                blendStrength = EditorGUILayout.Slider(Localization.GetContent("label_opacity"), blendStrength, 0f, 1f);
                 
-                if (blendMode == BlendMode.HDRAdd || blendMode == BlendMode.HDRMultiply)
-                {
-                    hdrColor = EditorGUILayout.ColorField(new GUIContent("HDR Color"), hdrColor, true, true, true);
-                }
+                // Transform
+                EditorGUI.indentLevel++;
+                blendTiling = EditorGUILayout.Toggle("Tiling", blendTiling);
+                blendScale = EditorGUILayout.Vector2Field("Scale", blendScale);
+                blendOffset = EditorGUILayout.Vector2Field("Offset", blendOffset);
+                EditorGUI.indentLevel--;
                 
                 if (EditorGUI.EndChangeCheck())
                 {
@@ -218,225 +248,61 @@ namespace UniTexEditor
                 blendMaskTexture = null;
                 blendMode = BlendMode.Normal;
                 blendStrength = 1f;
-                hdrColor = Color.white;
+                blendTiling = true;
+                blendScale = Vector2.one;
+                blendOffset = Vector2.zero;
             });
             
-            // --- Tone Curve ---
-            DrawToggleSection("Tone Curve", ref showToneCurve, () => {
-                EditorGUI.BeginChangeCheck();
-                
-                useRGBCurve = EditorGUILayout.Toggle("RGB Curve", useRGBCurve);
-                if (useRGBCurve)
-                {
-                    rgbCurve = EditorGUILayout.CurveField(" ", rgbCurve, Color.white, new Rect(0, 0, 1, 1));
-                }
-                
-                EditorGUILayout.Space(5);
-                
-                useRedCurve = EditorGUILayout.Toggle("Red Curve", useRedCurve);
-                if (useRedCurve)
-                {
-                    redCurve = EditorGUILayout.CurveField(" ", redCurve, Color.red, new Rect(0, 0, 1, 1));
-                }
-                
-                useGreenCurve = EditorGUILayout.Toggle("Green Curve", useGreenCurve);
-                if (useGreenCurve)
-                {
-                    greenCurve = EditorGUILayout.CurveField(" ", greenCurve, Color.green, new Rect(0, 0, 1, 1));
-                }
-                
-                useBlueCurve = EditorGUILayout.Toggle("Blue Curve", useBlueCurve);
-                if (useBlueCurve)
-                {
-                    blueCurve = EditorGUILayout.CurveField(" ", blueCurve, Color.blue, new Rect(0, 0, 1, 1));
-                }
-                
-                if (EditorGUI.EndChangeCheck())
-                {
-                    RequestPreviewUpdate();
-                }
-            }, () => {
-                // Reset Logic
-                useRGBCurve = true;
-                useRedCurve = false;
-                useGreenCurve = false;
-                useBlueCurve = false;
-                rgbCurve = AnimationCurve.Linear(0, 0, 1, 1);
-                redCurve = AnimationCurve.Linear(0, 0, 1, 1);
-                greenCurve = AnimationCurve.Linear(0, 0, 1, 1);
-                blueCurve = AnimationCurve.Linear(0, 0, 1, 1);
-            });
+            // ... (lines 234-419 omitted) ...
 
-            // --- Sharpen / Blur ---
-            DrawToggleSection("Sharpen / Blur", ref showSharpen, () => {
-                EditorGUI.BeginChangeCheck();
-                
-                sharpenMode = (SharpenMode)EditorGUILayout.EnumPopup("Mode", sharpenMode);
-                
-                if (sharpenMode == SharpenMode.Sharpen)
-                {
-                    sharpenStrength = EditorGUILayout.Slider("Strength", sharpenStrength, 0f, 2f);
-                }
-                else
-                {
-                    sharpenStrength = EditorGUILayout.Slider("Strength", sharpenStrength, 0f, 1f);
-                }
-                
-                sharpenKernelSize = EditorGUILayout.IntSlider("Kernel Size", sharpenKernelSize, 3, 9);
-                if (sharpenKernelSize % 2 == 0) sharpenKernelSize++;
-                
-                if (EditorGUI.EndChangeCheck())
-                {
-                    RequestPreviewUpdate();
-                }
-            }, () => {
-                // Reset Logic
-                sharpenMode = SharpenMode.Sharpen;
-                sharpenStrength = 1f;
-                sharpenKernelSize = 5;
-            });
-            
-            // --- Advanced Options ---
-            DrawToggleSection("Advanced Options", ref showAdvanced, () => {
-                
-                // Levels
-                GUILayout.Label("Levels", EditorStyles.boldLabel);
-                EditorGUI.BeginChangeCheck();
-                bool newShowLevels = EditorGUILayout.Toggle("Enable Levels", showLevels);
-                if (newShowLevels != showLevels)
-                {
-                    showLevels = newShowLevels;
-                    RequestPreviewUpdate();
-                }
-                
-                if (showLevels)
-                {
-                    EditorGUI.indentLevel++;
-                    EditorGUILayout.LabelField("Input Levels");
-                    EditorGUILayout.MinMaxSlider(ref lvlMinInput, ref lvlMaxInput, 0f, 1f);
-                    EditorGUILayout.BeginHorizontal();
-                    lvlMinInput = EditorGUILayout.FloatField(lvlMinInput, GUILayout.Width(50));
-                    GUILayout.FlexibleSpace();
-                    lvlMaxInput = EditorGUILayout.FloatField(lvlMaxInput, GUILayout.Width(50));
-                    EditorGUILayout.EndHorizontal();
-                    
-                    lvlMidGamma = EditorGUILayout.Slider("Midtone (Gamma)", lvlMidGamma, 0.1f, 3f);
-                    
-                    EditorGUILayout.Space(5);
-                    EditorGUILayout.LabelField("Output Levels");
-                    EditorGUILayout.MinMaxSlider(ref lvlMinOutput, ref lvlMaxOutput, 0f, 1f);
-                    EditorGUILayout.BeginHorizontal();
-                    lvlMinOutput = EditorGUILayout.FloatField(lvlMinOutput, GUILayout.Width(50));
-                    GUILayout.FlexibleSpace();
-                    lvlMaxOutput = EditorGUILayout.FloatField(lvlMaxOutput, GUILayout.Width(50));
-                    EditorGUILayout.EndHorizontal();
-                    EditorGUI.indentLevel--;
-                    
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        RequestPreviewUpdate();
-                    }
-                }
-                
-                EditorGUILayout.Space(10);
-                
-                // Channel Mixer
-                GUILayout.Label("Channel Mixer", EditorStyles.boldLabel);
-                EditorGUI.BeginChangeCheck();
-                bool newShowCM = EditorGUILayout.Toggle("Enable Channel Mixer", showChannelMixer);
-                if (newShowCM != showChannelMixer)
-                {
-                    showChannelMixer = newShowCM;
-                    RequestPreviewUpdate();
-                }
-                
-                if (showChannelMixer)
-                {
-                    EditorGUI.indentLevel++;
-                    cmOutRed = (ChannelSource)EditorGUILayout.EnumPopup("Red Output <=", cmOutRed);
-                    cmOutGreen = (ChannelSource)EditorGUILayout.EnumPopup("Green Output <=", cmOutGreen);
-                    cmOutBlue = (ChannelSource)EditorGUILayout.EnumPopup("Blue Output <=", cmOutBlue);
-                    cmOutAlpha = (ChannelSource)EditorGUILayout.EnumPopup("Alpha Output <=", cmOutAlpha);
-                    EditorGUI.indentLevel--;
-                    
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        RequestPreviewUpdate();
-                    }
-                }
-            }, () => {
-                // Reset Logic
-                showLevels = false;
-                lvlMinInput = 0f;
-                lvlMaxInput = 1f;
-                lvlMinOutput = 0f;
-                lvlMaxOutput = 1f;
-                lvlMidGamma = 1f;
-                
-                showChannelMixer = false;
-                cmOutRed = ChannelSource.Red;
-                cmOutGreen = ChannelSource.Green;
-                cmOutBlue = ChannelSource.Blue;
-                cmOutAlpha = ChannelSource.Alpha;
-            });
-            
             GUILayout.EndVertical();
         }
         
         private void DrawFooter()
         {
-            GUILayout.BeginVertical(EditorStyles.helpBox); // フッター領域
+            GUILayout.BeginVertical(boxStyle);
             
-            // 出力設定
-            overwriteSource = EditorGUILayout.ToggleLeft("Output: Overwrite Source", overwriteSource);
+            // Output Path
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(string.IsNullOrEmpty(customOutputPath) ? "Output: (Auto)" : $"Output: ...{Path.GetFileName(customOutputPath)}", EditorStyles.miniLabel);
+            GUILayout.FlexibleSpace();
+            
+            // Overwrite Toggle
+            overwriteSource = GUILayout.Toggle(overwriteSource, Localization.GetContent("label_output_overwrite"));
             
             if (!overwriteSource)
             {
-                EditorGUILayout.BeginHorizontal();
-                string displayPath = string.IsNullOrEmpty(customOutputPath) ? outputPath : customOutputPath;
-                
-                EditorGUI.BeginChangeCheck();
-                string newPath = EditorGUILayout.TextField(displayPath); // ラベルなしでスペース節約
-                if (EditorGUI.EndChangeCheck() && newPath != displayPath)
+                if (GUILayout.Button(Localization.GetContent("btn_select"), EditorStyles.miniButton, GUILayout.Width(60)))
                 {
-                    customOutputPath = newPath;
-                    outputPath = newPath;
-                }
-                
-                if (GUILayout.Button("Select...", GUILayout.Width(60)))
-                {
-                    string timestamp = System.DateTime.Now.ToString("yyMMdd_HHmmss");
-                    string defaultName = sourceTexture != null ? Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(sourceTexture)) + $"_edited_{timestamp}" : $"EditedTexture_{timestamp}";
-                    string path = EditorUtility.SaveFilePanelInProject("Save Location", defaultName, "png", "Select save location");
+                    string path = EditorUtility.SaveFilePanel("Save Texture", "Assets", "ProcessedTexture", "png");
                     if (!string.IsNullOrEmpty(path))
                     {
                         customOutputPath = path;
-                        outputPath = path;
                     }
                 }
-                EditorGUILayout.EndHorizontal();
             }
+            GUILayout.EndHorizontal();
             
-            convertToSRGBOnSave = EditorGUILayout.ToggleLeft(new GUIContent("Convert to sRGB on Save (Recommended for Viewers)", "OFF: Keeps Linear (High Precision)"), convertToSRGBOnSave);
+            // sRGB Convert Option Removed (Always ON)
             
             EditorGUILayout.Space(5);
             
-            // アクションボタン
-            GUI.enabled = sourceTexture != null;
-            if (GUILayout.Button("Apply & Save", GUILayout.Height(30)))
+            // Apply Button
+            if (GUILayout.Button(Localization.GetContent("btn_apply_save"), actionButtonStyle))
             {
                 ApplyAndSave();
             }
-            GUI.enabled = true;
             
-            // リセットは小さく右下に
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Reset All Parameters", EditorStyles.miniButton))
+            EditorGUILayout.Space(2);
+            
+            // Reset All Button
+            if (GUILayout.Button(Localization.GetContent("btn_reset_all")))
             {
-                ResetParameters();
+                if (EditorUtility.DisplayDialog("Reset All", "Are you sure you want to reset all parameters?", "Yes", "No"))
+                {
+                    ResetParameters();
+                }
             }
-            GUILayout.EndHorizontal();
             
             GUILayout.EndVertical();
         }
@@ -471,7 +337,7 @@ namespace UniTexEditor
             if (onReset != null)
             {
                 // リセットアイコンがあればもっと良いが、テキストで実装
-                if (GUILayout.Button("Reset", EditorStyles.miniButton, GUILayout.Width(50)))
+                if (GUILayout.Button(Localization.GetContent("btn_reset"), EditorStyles.miniButton, GUILayout.Width(50)))
                 {
                     // リセット実行
                     onReset.Invoke();

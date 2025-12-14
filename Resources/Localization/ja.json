@@ -1,0 +1,249 @@
+{
+    "items": [
+        {
+            "key": "header_title",
+            "text": "UniTex Editor",
+            "tooltip": "簡易テクスチャ編集ツール"
+        },
+        {
+            "key": "preview_auto_update",
+            "text": "自動更新",
+            "tooltip": "パラメータ変更時に自動でプレビューを更新します。"
+        },
+        {
+            "key": "preview_update_btn",
+            "text": "更新",
+            "tooltip": "プレビューを手動で更新します。"
+        },
+        {
+            "key": "section_input",
+            "text": "入力設定 (Input)",
+            "tooltip": "処理対象のテクスチャとマスクを設定します。"
+        },
+        {
+            "key": "label_source",
+            "text": "ソーステクスチャ",
+            "tooltip": "メインとなるテクスチャです。"
+        },
+        {
+            "key": "label_mask",
+            "text": "全体マスク",
+            "tooltip": "全体の処理範囲を制限するマスクです（白=処理、黒=無視）。"
+        },
+        {
+            "key": "label_invert_mask",
+            "text": "マスクを反転",
+            "tooltip": "マスクの白黒を反転させます。"
+        },
+        {
+            "key": "label_mask_strength",
+            "text": "マスク強度",
+            "tooltip": "マスクの適用強度を調整します。"
+        },
+        {
+            "key": "section_color_correction",
+            "text": "色調補正 (Color Correction)",
+            "tooltip": "色相、彩度、明度、ガンマなどを調整します。"
+        },
+        {
+            "key": "label_hue_shift",
+            "text": "色相 (Hue)",
+            "tooltip": "色味を回転させます。"
+        },
+        {
+            "key": "label_saturation",
+            "text": "彩度 (Saturation)",
+            "tooltip": "色の鮮やかさを調整します。"
+        },
+        {
+            "key": "label_brightness",
+            "text": "明度 (Brightness)",
+            "tooltip": "明るさを調整します。"
+        },
+        {
+            "key": "label_gamma",
+            "text": "ガンマ (Gamma)",
+            "tooltip": "中間調の明るさを補正します。"
+        },
+        {
+            "key": "label_cc_blending",
+            "text": "カラーブレンド",
+            "tooltip": "指定した色を乗算などで合成します。"
+        },
+        {
+            "key": "label_target_color",
+            "text": "ターゲット色",
+            "tooltip": "合成する色を指定します。"
+        },
+        {
+            "key": "label_blend_mode",
+            "text": "ブレンドモード",
+            "tooltip": "色の合成計算式を選択します。"
+        },
+        {
+            "key": "label_opacity",
+            "text": "不透明度",
+            "tooltip": "合成色の強さを調整します。"
+        },
+        {
+            "key": "section_blend",
+            "text": "テクスチャ合成 (Blend)",
+            "tooltip": "別のテクスチャを重ねて合成します。"
+        },
+        {
+            "key": "label_blend_tex",
+            "text": "合成テクスチャ",
+            "tooltip": "重ねるテクスチャを指定します。"
+        },
+        {
+            "key": "label_blend_mask",
+            "text": "合成用マスク",
+            "tooltip": "テクスチャ合成の範囲を指定するマスクです。"
+        },
+        {
+            "key": "section_tone_curve",
+            "text": "トーンカーブ (Tone Curve)",
+            "tooltip": "カーブを使って明るさや各チャンネルを補正します。"
+        },
+        {
+            "key": "label_curve_rgb",
+            "text": "RGBカーブ",
+            "tooltip": "全チャンネル共通の明るさを調整します。"
+        },
+        {
+            "key": "label_curve_r",
+            "text": "Redカーブ",
+            "tooltip": "赤チャンネルのみを調整します。"
+        },
+        {
+            "key": "label_curve_g",
+            "text": "Greenカーブ",
+            "tooltip": "緑チャンネルのみを調整します。"
+        },
+        {
+            "key": "label_curve_b",
+            "text": "Blueカーブ",
+            "tooltip": "青チャンネルのみを調整します。"
+        },
+        {
+            "key": "section_sharpen",
+            "text": "シャープ / ブラー",
+            "tooltip": "輪郭強調やぼかし効果を適用します。"
+        },
+        {
+            "key": "label_mode",
+            "text": "モード",
+            "tooltip": "シャープ化するか、ぼかすかを選択します。"
+        },
+        {
+            "key": "label_strength",
+            "text": "強度",
+            "tooltip": "効果の強さを調整します。"
+        },
+        {
+            "key": "label_kernel",
+            "text": "カーネルサイズ",
+            "tooltip": "処理の広がり（滑らかさ）を指定します。大きいほど広範囲に影響します。"
+        },
+        {
+            "key": "section_advanced",
+            "text": "高度なオプション (Advanced)",
+            "tooltip": "レベル補正やチャンネルミキサーなど、より詳細な編集を行います。"
+        },
+        {
+            "key": "label_levels",
+            "text": "レベル補正 (Levels)",
+            "tooltip": "入力・出力レベルを調整してコントラストを整えます。"
+        },
+        {
+            "key": "label_enable_levels",
+            "text": "レベル補正を有効化",
+            "tooltip": "レベル補正を適用します。"
+        },
+        {
+            "key": "label_input_levels",
+            "text": "入力レベル",
+            "tooltip": "画像の黒点（左）、白点（右）を指定します。"
+        },
+        {
+            "key": "label_output_levels",
+            "text": "出力レベル",
+            "tooltip": "出力時の黒の強さ（左）、白の強さ（右）を制限します。"
+        },
+        {
+            "key": "label_mid_gamma",
+            "text": "中間調 (Gamma)",
+            "tooltip": "中間域の明るさを調整します。"
+        },
+        {
+            "key": "label_channel_mixer",
+            "text": "チャンネルミキサー",
+            "tooltip": "RGBA各チャンネルの中身を入れ替えます。"
+        },
+        {
+            "key": "label_enable_mixer",
+            "text": "チャンネルミキサーを有効化",
+            "tooltip": "チャンネル入れ替えを適用します。"
+        },
+        {
+            "key": "label_out_r",
+            "text": "Red 出力 <=",
+            "tooltip": "赤チャンネルに出力するソースを指定します。"
+        },
+        {
+            "key": "label_out_g",
+            "text": "Green 出力 <=",
+            "tooltip": "緑チャンネルに出力するソースを指定します。"
+        },
+        {
+            "key": "label_out_b",
+            "text": "Blue 出力 <=",
+            "tooltip": "青チャンネルに出力するソースを指定します。"
+        },
+        {
+            "key": "label_out_a",
+            "text": "Alpha 出力 <=",
+            "tooltip": "アルファチャンネルに出力するソースを指定します。"
+        },
+        {
+            "key": "label_output_overwrite",
+            "text": "出力: ソースを上書き",
+            "tooltip": "元のファイルを直接上書き保存します。取り消しできないので注意してください。"
+        },
+        {
+            "key": "label_srgb_convert",
+            "text": "保存時に sRGB に変換 (ビューア向け推奨)",
+            "tooltip": "OFFにするとLinearのまま保存します（データ用）。ONにすると一般的な画像ビューアで見た通りの色になります。"
+        },
+        {
+            "key": "btn_select",
+            "text": "選択...",
+            "tooltip": "保存先フォルダを選択します。"
+        },
+        {
+            "key": "btn_apply_save",
+            "text": "適用 & 保存",
+            "tooltip": "処理を実行し、テクスチャをファイルに保存します。"
+        },
+        {
+            "key": "btn_reset_all",
+            "text": "全パラメータをリセット",
+            "tooltip": "すべての設定を初期状態に戻します。"
+        },
+        {
+            "key": "btn_reset",
+            "text": "リセット",
+            "tooltip": "このセクションの設定をリセットします。"
+        },
+        {
+            "key": "btn_save_inverted",
+            "text": "反転画像を保存...",
+            "tooltip": "マスクを反転して新しいファイルとして保存します"
+        },
+        {
+            "key": "msg_save_inverted_success",
+            "text": "反転画像の保存完了: ",
+            "tooltip": ""
+        }
+    ]
+}

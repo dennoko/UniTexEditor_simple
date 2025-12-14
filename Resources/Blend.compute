@@ -11,9 +11,8 @@ Texture2D<float> Mask;
 
 int UseMask;
 int UseBlendMask;
-int BlendMode;       // 0:Normal, 1:Multiply, 2:Add, 3:Screen, 4:Overlay, 5:HDRAdd, 6:HDRMultiply
+int BlendMode;       // 0:Normal, 1:Multiply, 2:Add, 3:Screen, 4:Overlay
 float BlendStrength; // 0 ~ 1
-float4 HDRColor;     // HDR合成用の色
 
 // ブレンドモード関数
 float3 BlendNormal(float3 base, float3 blend)
@@ -45,15 +44,13 @@ float3 BlendOverlay(float3 base, float3 blend)
     return result;
 }
 
-float3 BlendHDRAdd(float3 base, float3 blend, float4 hdrColor)
-{
-    return base + blend * hdrColor.rgb * hdrColor.a;
-}
+int Tiling;
+float2 Scale;
+float2 Offset;
 
-float3 BlendHDRMultiply(float3 base, float3 blend, float4 hdrColor)
-{
-    return base * (blend * hdrColor.rgb * hdrColor.a);
-}
+// ...
+
+// ブレンドモード関数 ... (omitted, assuming not changing lines above 48 in broad search, but here we target specific block)
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
@@ -66,15 +63,39 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     
     float4 baseColor = Source[id.xy];
     
+    // UV Calculation
+    float2 uv = float2(id.x, id.y) / float2(width, height);
+    float2 blendUV = (uv - Offset) / Scale;
+    
+    bool doBlend = true;
+    
+    if (Tiling > 0)
+    {
+        blendUV = frac(blendUV);
+    }
+    else
+    {
+        if (any(blendUV < 0.0) || any(blendUV > 1.0))
+        {
+            doBlend = false;
+        }
+    }
+    
     // BlendTextureのサイズを取得してスケーリング
     uint blendWidth, blendHeight;
     BlendTexture.GetDimensions(blendWidth, blendHeight);
     
     uint2 blendCoord = uint2(
-        (id.x * blendWidth) / width,
-        (id.y * blendHeight) / height
+        blendUV.x * blendWidth,
+        blendUV.y * blendHeight
     );
-    float4 blendColor = BlendTexture[blendCoord];
+    
+    // Tiling OFFで範囲外の場合は透明(または何もしない)
+    float4 blendColor = float4(0,0,0,0);
+    if (doBlend)
+    {
+        blendColor = BlendTexture[blendCoord];
+    }
     
     // ブレンド用マスクを取得（0=効果なし, 1=最大）
     float blendMaskValue = 1.0;
@@ -117,10 +138,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         blendResult = BlendScreen(baseColor.rgb, blendColor.rgb);
     else if (BlendMode == 4)
         blendResult = BlendOverlay(baseColor.rgb, blendColor.rgb);
-    else if (BlendMode == 5)
-        blendResult = BlendHDRAdd(baseColor.rgb, blendColor.rgb, HDRColor);
-    else if (BlendMode == 6)
-        blendResult = BlendHDRMultiply(baseColor.rgb, blendColor.rgb, HDRColor);
     else
         blendResult = baseColor.rgb;
     

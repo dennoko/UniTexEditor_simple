@@ -31,7 +31,9 @@ namespace UniTexEditor
         private Texture2D blendMaskTexture;
         private BlendMode blendMode = BlendMode.Normal;
         private float blendStrength = 1f;
-        private Color hdrColor = Color.white;
+        private bool blendTiling = true;
+        private Vector2 blendScale = Vector2.one;
+        private Vector2 blendOffset = Vector2.zero;
         
         // Advanced Options
         private bool showAdvanced = false;
@@ -76,7 +78,7 @@ namespace UniTexEditor
         private bool overwriteSource = false;
         private string outputPath = "";
         private string customOutputPath = ""; // ユーザーが明示的に指定したパス
-        private bool convertToSRGBOnSave = true; // 保存時にsRGBに変換するか
+        // convertToSRGBOnSave removed (always true behavior)
         
         // プレビュー
         private bool autoPreview = true;
@@ -107,7 +109,18 @@ namespace UniTexEditor
         
         private void OnEnable()
         {
-            processor = new TextureProcessor();
+            // 初期化
+            Localization.Initialize();
+            
+            if (processor == null)
+            {
+                processor = new TextureProcessor();
+            }
+            if (resultPreview != null)
+            {
+                DestroyImmediate(resultPreview);
+                resultPreview = null;
+            }
         }
         
         private void OnDisable()

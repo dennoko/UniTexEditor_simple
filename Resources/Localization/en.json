@@ -1,0 +1,249 @@
+{
+    "items": [
+        {
+            "key": "header_title",
+            "text": "UniTex Editor",
+            "tooltip": "Unity Texture Editor Simple"
+        },
+        {
+            "key": "preview_auto_update",
+            "text": "Auto Update",
+            "tooltip": "Automatically update preview when parameters change."
+        },
+        {
+            "key": "preview_update_btn",
+            "text": "Update",
+            "tooltip": "Manually update the preview."
+        },
+        {
+            "key": "section_input",
+            "text": "Input Settings",
+            "tooltip": "Settings for source texture and mask."
+        },
+        {
+            "key": "label_source",
+            "text": "Source Texture",
+            "tooltip": "The main texture to be processed."
+        },
+        {
+            "key": "label_mask",
+            "text": "Mask Texture",
+            "tooltip": "Global mask texture. White = Process, Black = Clean."
+        },
+        {
+            "key": "label_invert_mask",
+            "text": "Invert Mask",
+            "tooltip": "Check to invert the mask (White <-> Black)."
+        },
+        {
+            "key": "label_mask_strength",
+            "text": "Mask Strength",
+            "tooltip": "Adjust the intensity of the mask."
+        },
+        {
+            "key": "section_color_correction",
+            "text": "Color Correction",
+            "tooltip": "Adjust Hue, Saturation, Brightness, and Gamma."
+        },
+        {
+            "key": "label_hue_shift",
+            "text": "Hue Shift",
+            "tooltip": "Rotate the color hue."
+        },
+        {
+            "key": "label_saturation",
+            "text": "Saturation",
+            "tooltip": "Adjust color intensity."
+        },
+        {
+            "key": "label_brightness",
+            "text": "Brightness",
+            "tooltip": "Adjust brightness."
+        },
+        {
+            "key": "label_gamma",
+            "text": "Gamma",
+            "tooltip": "Adjust gamma curve."
+        },
+        {
+            "key": "label_cc_blending",
+            "text": "Color Blending",
+            "tooltip": "Blend a specific color into the result."
+        },
+        {
+            "key": "label_target_color",
+            "text": "Target Color",
+            "tooltip": "The color to blend."
+        },
+        {
+            "key": "label_blend_mode",
+            "text": "Blend Mode",
+            "tooltip": "Blending algorithm."
+        },
+        {
+            "key": "label_opacity",
+            "text": "Opacity",
+            "tooltip": "Strength of the blended color."
+        },
+        {
+            "key": "section_blend",
+            "text": "Blend / Composite",
+            "tooltip": "Composite another texture over the source."
+        },
+        {
+            "key": "label_blend_tex",
+            "text": "Blend Texture",
+            "tooltip": "Texture to overlay."
+        },
+        {
+            "key": "label_blend_mask",
+            "text": "Blend Mask",
+            "tooltip": "Mask for the overlay texture."
+        },
+        {
+            "key": "section_tone_curve",
+            "text": "Tone Curve",
+            "tooltip": "Adjust brightness using curves."
+        },
+        {
+            "key": "label_curve_rgb",
+            "text": "RGB Curve",
+            "tooltip": "Curve affecting all channels."
+        },
+        {
+            "key": "label_curve_r",
+            "text": "Red Curve",
+            "tooltip": "Curve affecting Red channel."
+        },
+        {
+            "key": "label_curve_g",
+            "text": "Green Curve",
+            "tooltip": "Curve affecting Green channel."
+        },
+        {
+            "key": "label_curve_b",
+            "text": "Blue Curve",
+            "tooltip": "Curve affecting Blue channel."
+        },
+        {
+            "key": "section_sharpen",
+            "text": "Sharpen / Blur",
+            "tooltip": "Apply sharpening or blurring effects."
+        },
+        {
+            "key": "label_mode",
+            "text": "Mode",
+            "tooltip": "Select between Sharpen or Blur."
+        },
+        {
+            "key": "label_strength",
+            "text": "Strength",
+            "tooltip": "Intensity of the effect."
+        },
+        {
+            "key": "label_kernel",
+            "text": "Kernel Size",
+            "tooltip": "Size of the convolution kernel (Smoothness)."
+        },
+        {
+            "key": "section_advanced",
+            "text": "Advanced Options",
+            "tooltip": "Advanced processing tools like Levels and Channel Mixer."
+        },
+        {
+            "key": "label_levels",
+            "text": "Levels",
+            "tooltip": "Input/Output levels adjustment."
+        },
+        {
+            "key": "label_enable_levels",
+            "text": "Enable Levels",
+            "tooltip": "Toggle Levels adjustment."
+        },
+        {
+            "key": "label_input_levels",
+            "text": "Input Levels",
+            "tooltip": "Set Black/White points and Gamma for input."
+        },
+        {
+            "key": "label_output_levels",
+            "text": "Output Levels",
+            "tooltip": "Set Black/White clipping for output."
+        },
+        {
+            "key": "label_mid_gamma",
+            "text": "Midtone (Gamma)",
+            "tooltip": "Midtone brightness."
+        },
+        {
+            "key": "label_channel_mixer",
+            "text": "Channel Mixer",
+            "tooltip": "Remap RGBA channels."
+        },
+        {
+            "key": "label_enable_mixer",
+            "text": "Enable Channel Mixer",
+            "tooltip": "Toggle Channel Mixer."
+        },
+        {
+            "key": "label_out_r",
+            "text": "Red Output <=",
+            "tooltip": "Source for Red Channel."
+        },
+        {
+            "key": "label_out_g",
+            "text": "Green Output <=",
+            "tooltip": "Source for Green Channel."
+        },
+        {
+            "key": "label_out_b",
+            "text": "Blue Output <=",
+            "tooltip": "Source for Blue Channel."
+        },
+        {
+            "key": "label_out_a",
+            "text": "Alpha Output <=",
+            "tooltip": "Source for Alpha Channel."
+        },
+        {
+            "key": "label_output_overwrite",
+            "text": "Output: Overwrite Source",
+            "tooltip": "Overwrite the source file directly."
+        },
+        {
+            "key": "label_srgb_convert",
+            "text": "Convert to sRGB on Save (Recommended for Viewers)",
+            "tooltip": "OFF: Keeps Linear (High Precision)"
+        },
+        {
+            "key": "btn_select",
+            "text": "Select...",
+            "tooltip": "Choose save location."
+        },
+        {
+            "key": "btn_apply_save",
+            "text": "Apply & Save",
+            "tooltip": "Process image and save to file."
+        },
+        {
+            "key": "btn_reset_all",
+            "text": "Reset All Parameters",
+            "tooltip": "Reset everything to default."
+        },
+        {
+            "key": "btn_reset",
+            "text": "Reset",
+            "tooltip": "Reset this section."
+        },
+        {
+            "key": "btn_save_inverted",
+            "text": "Save Inverted Mask...",
+            "tooltip": "Invert and save the mask as a new file."
+        },
+        {
+            "key": "msg_save_inverted_success",
+            "text": "Saved Inverted Mask: ",
+            "tooltip": ""
+        }
+    ]
+}

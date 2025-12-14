@@ -12,9 +12,7 @@ namespace UniTexEditor
         Multiply = 1,
         Add = 2,
         Screen = 3,
-        Overlay = 4,
-        HDRAdd = 5,
-        HDRMultiply = 6
+        Overlay = 4
     }
     
     /// <summary>
@@ -26,8 +24,11 @@ namespace UniTexEditor
         public Texture2D blendTexture;
         public Texture2D blendMaskTexture;
         public BlendMode blendMode = BlendMode.Normal;
-        public float blendStrength = 1f;  // 0 ~ 1
-        public Color hdrColor = Color.white;  // HDR合成用
+        public float blendStrength = 1f;  // HDR合成用
+        
+        public bool tiling = true;
+        public Vector2 scale = Vector2.one;
+        public Vector2 offset = Vector2.zero;
         
         private ComputeShader blendShader;
         private RenderTexture tempRT;
@@ -90,7 +91,12 @@ namespace UniTexEditor
             
             blendShader.SetInt("BlendMode", (int)blendMode);
             blendShader.SetFloat("BlendStrength", blendStrength);
-            blendShader.SetVector("HDRColor", new Vector4(hdrColor.r, hdrColor.g, hdrColor.b, hdrColor.a));
+            
+            // Transform Properties
+            blendShader.SetInt("Tiling", tiling ? 1 : 0);
+            // Vector2をfloat arrayや個別のfloatとして渡す
+            blendShader.SetFloats("Scale", scale.x, scale.y);
+            blendShader.SetFloats("Offset", offset.x, offset.y);
             
             int threadGroupsX = Mathf.CeilToInt(source.width / 8.0f);
             int threadGroupsY = Mathf.CeilToInt(source.height / 8.0f);
