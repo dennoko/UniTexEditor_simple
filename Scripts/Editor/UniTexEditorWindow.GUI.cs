@@ -200,8 +200,6 @@ namespace UniTexEditor
                 saturation = EditorGUILayout.Slider(Localization.GetContent("label_saturation"), saturation, 0f, 2f);
                 brightness = EditorGUILayout.Slider(Localization.GetContent("label_brightness"), brightness, 0f, 2f);
                 gamma = EditorGUILayout.Slider(Localization.GetContent("label_gamma"), gamma, 0.1f, 3f);
-                
-                EditorGUILayout.Space(5);
                 GUILayout.Label(Localization.GetText("label_cc_blending"), EditorStyles.boldLabel);
                 ccTargetColor = EditorGUILayout.ColorField(Localization.GetContent("label_target_color"), ccTargetColor);
                 ccBlendMode = (BlendMode)EditorGUILayout.EnumPopup(Localization.GetContent("label_blend_mode"), ccBlendMode);
@@ -216,10 +214,219 @@ namespace UniTexEditor
                 hueShift = 0f;
                 saturation = 1f;
                 brightness = 1f;
+                brightness = 1f;
                 gamma = 1f;
                 ccTargetColor = Color.white;
                 ccBlendMode = BlendMode.Normal;
                 ccBlendOpacity = 0f;
+            });
+            
+            // --- Levels ---
+            DrawToggleSection("Levels", ref showLevels, () => {
+                EditorGUI.BeginChangeCheck();
+                
+                EditorGUILayout.MinMaxSlider("Input Levels", ref lvlMinInput, ref lvlMaxInput, 0f, 1f);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"Min: {lvlMinInput:F2}", EditorStyles.miniLabel);
+                GUILayout.FlexibleSpace();
+                GUILayout.Label($"Max: {lvlMaxInput:F2}", EditorStyles.miniLabel);
+                GUILayout.EndHorizontal();
+                
+                lvlMidGamma = EditorGUILayout.Slider("Mid (Gamma)", lvlMidGamma, 0.1f, 5f);
+                
+                EditorGUILayout.Space(2);
+                
+                EditorGUILayout.MinMaxSlider("Output Levels", ref lvlMinOutput, ref lvlMaxOutput, 0f, 1f);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"Min: {lvlMinOutput:F2}", EditorStyles.miniLabel);
+                GUILayout.FlexibleSpace();
+                GUILayout.Label($"Max: {lvlMaxOutput:F2}", EditorStyles.miniLabel);
+                GUILayout.EndHorizontal();
+                
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RequestPreviewUpdate();
+                }
+            }, () => {
+                lvlMinInput = 0f;
+                lvlMaxInput = 1f;
+                lvlMinOutput = 0f;
+                lvlMaxOutput = 1f;
+                lvlMidGamma = 1f;
+            });
+            
+            // --- Tone Curve ---
+            DrawToggleSection("Tone Curve", ref showToneCurve, () => {
+                EditorGUI.BeginChangeCheck();
+                
+                useRGBCurve = EditorGUILayout.ToggleLeft("RGB", useRGBCurve);
+                if (useRGBCurve) rgbCurve = EditorGUILayout.CurveField("RGB Curve", rgbCurve, Color.white, new Rect(0,0,1,1));
+                
+                useRedCurve = EditorGUILayout.ToggleLeft("Red", useRedCurve);
+                if (useRedCurve) redCurve = EditorGUILayout.CurveField("Red Curve", redCurve, Color.red, new Rect(0,0,1,1));
+                
+                useGreenCurve = EditorGUILayout.ToggleLeft("Green", useGreenCurve);
+                if (useGreenCurve) greenCurve = EditorGUILayout.CurveField("Green Curve", greenCurve, Color.green, new Rect(0,0,1,1));
+                
+                useBlueCurve = EditorGUILayout.ToggleLeft("Blue", useBlueCurve);
+                if (useBlueCurve) blueCurve = EditorGUILayout.CurveField("Blue Curve", blueCurve, Color.blue, new Rect(0,0,1,1));
+                
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RequestPreviewUpdate();
+                }
+            }, () => {
+                rgbCurve = AnimationCurve.Linear(0,0,1,1);
+                redCurve = AnimationCurve.Linear(0,0,1,1);
+                greenCurve = AnimationCurve.Linear(0,0,1,1);
+                blueCurve = AnimationCurve.Linear(0,0,1,1);
+                useRGBCurve = true;
+                useRedCurve = false;
+                useGreenCurve = false;
+                useBlueCurve = false;
+            });
+            
+            // --- Channel Mixer ---
+            DrawToggleSection("Channel Mixer", ref showChannelMixer, () => {
+                EditorGUI.BeginChangeCheck();
+                
+                GUILayout.Label("Output Channels Source:", EditorStyles.miniLabel);
+                cmOutRed = (ChannelSource)EditorGUILayout.EnumPopup("Red Output", cmOutRed);
+                cmOutGreen = (ChannelSource)EditorGUILayout.EnumPopup("Green Output", cmOutGreen);
+                cmOutBlue = (ChannelSource)EditorGUILayout.EnumPopup("Blue Output", cmOutBlue);
+                cmOutAlpha = (ChannelSource)EditorGUILayout.EnumPopup("Alpha Output", cmOutAlpha);
+                
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RequestPreviewUpdate();
+                }
+            }, () => {
+                cmOutRed = ChannelSource.Red;
+                cmOutGreen = ChannelSource.Green;
+                cmOutBlue = ChannelSource.Blue;
+                cmOutAlpha = ChannelSource.Alpha;
+            });
+
+            // --- Sharpen / Blur ---
+            DrawToggleSection("Sharpen / Blur", ref showSharpen, () => {
+                EditorGUI.BeginChangeCheck();
+                
+                sharpenMode = (SharpenMode)EditorGUILayout.EnumPopup("Mode", sharpenMode);
+                sharpenStrength = EditorGUILayout.Slider("Strength", sharpenStrength, 0f, 5f);
+                sharpenKernelSize = EditorGUILayout.IntSlider("Kernel Size", sharpenKernelSize, 1, 5);
+                
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RequestPreviewUpdate();
+                }
+            }, () => {
+                sharpenMode = SharpenMode.Sharpen;
+                sharpenStrength = 1f;
+                sharpenKernelSize = 1;
+            });
+            
+            // --- Levels ---
+            DrawToggleSection("Levels", ref showLevels, () => {
+                EditorGUI.BeginChangeCheck();
+                
+                EditorGUILayout.MinMaxSlider("Input Levels", ref lvlMinInput, ref lvlMaxInput, 0f, 1f);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"Min: {lvlMinInput:F2}", EditorStyles.miniLabel);
+                GUILayout.FlexibleSpace();
+                GUILayout.Label($"Max: {lvlMaxInput:F2}", EditorStyles.miniLabel);
+                GUILayout.EndHorizontal();
+                
+                lvlMidGamma = EditorGUILayout.Slider("Mid (Gamma)", lvlMidGamma, 0.1f, 5f);
+                
+                EditorGUILayout.Space(2);
+                
+                EditorGUILayout.MinMaxSlider("Output Levels", ref lvlMinOutput, ref lvlMaxOutput, 0f, 1f);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"Min: {lvlMinOutput:F2}", EditorStyles.miniLabel);
+                GUILayout.FlexibleSpace();
+                GUILayout.Label($"Max: {lvlMaxOutput:F2}", EditorStyles.miniLabel);
+                GUILayout.EndHorizontal();
+                
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RequestPreviewUpdate();
+                }
+            }, () => {
+                lvlMinInput = 0f;
+                lvlMaxInput = 1f;
+                lvlMinOutput = 0f;
+                lvlMaxOutput = 1f;
+                lvlMidGamma = 1f;
+            });
+            
+            // --- Tone Curve ---
+            DrawToggleSection("Tone Curve", ref showToneCurve, () => {
+                EditorGUI.BeginChangeCheck();
+                
+                useRGBCurve = EditorGUILayout.ToggleLeft("RGB", useRGBCurve);
+                if (useRGBCurve) rgbCurve = EditorGUILayout.CurveField("RGB Curve", rgbCurve, Color.white, new Rect(0,0,1,1));
+                
+                useRedCurve = EditorGUILayout.ToggleLeft("Red", useRedCurve);
+                if (useRedCurve) redCurve = EditorGUILayout.CurveField("Red Curve", redCurve, Color.red, new Rect(0,0,1,1));
+                
+                useGreenCurve = EditorGUILayout.ToggleLeft("Green", useGreenCurve);
+                if (useGreenCurve) greenCurve = EditorGUILayout.CurveField("Green Curve", greenCurve, Color.green, new Rect(0,0,1,1));
+                
+                useBlueCurve = EditorGUILayout.ToggleLeft("Blue", useBlueCurve);
+                if (useBlueCurve) blueCurve = EditorGUILayout.CurveField("Blue Curve", blueCurve, Color.blue, new Rect(0,0,1,1));
+                
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RequestPreviewUpdate();
+                }
+            }, () => {
+                rgbCurve = AnimationCurve.Linear(0,0,1,1);
+                redCurve = AnimationCurve.Linear(0,0,1,1);
+                greenCurve = AnimationCurve.Linear(0,0,1,1);
+                blueCurve = AnimationCurve.Linear(0,0,1,1);
+                useRGBCurve = true;
+                useRedCurve = false;
+                useGreenCurve = false;
+                useBlueCurve = false;
+            });
+            
+            // --- Channel Mixer ---
+            DrawToggleSection("Channel Mixer", ref showChannelMixer, () => {
+                EditorGUI.BeginChangeCheck();
+                
+                GUILayout.Label("Output Channels Source:", EditorStyles.miniLabel);
+                cmOutRed = (ChannelSource)EditorGUILayout.EnumPopup("Red Output", cmOutRed);
+                cmOutGreen = (ChannelSource)EditorGUILayout.EnumPopup("Green Output", cmOutGreen);
+                cmOutBlue = (ChannelSource)EditorGUILayout.EnumPopup("Blue Output", cmOutBlue);
+                cmOutAlpha = (ChannelSource)EditorGUILayout.EnumPopup("Alpha Output", cmOutAlpha);
+                
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RequestPreviewUpdate();
+                }
+            }, () => {
+                cmOutRed = ChannelSource.Red;
+                cmOutGreen = ChannelSource.Green;
+                cmOutBlue = ChannelSource.Blue;
+                cmOutAlpha = ChannelSource.Alpha;
+            });
+
+            // --- Sharpen / Blur ---
+            DrawToggleSection("Sharpen / Blur", ref showSharpen, () => {
+                EditorGUI.BeginChangeCheck();
+                
+                sharpenMode = (SharpenMode)EditorGUILayout.EnumPopup("Mode", sharpenMode);
+                sharpenStrength = EditorGUILayout.Slider("Strength", sharpenStrength, 0f, 5f);
+                sharpenKernelSize = EditorGUILayout.IntSlider("Kernel Size", sharpenKernelSize, 1, 5);
+                
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RequestPreviewUpdate();
+                }
+            }, () => {
+                sharpenMode = SharpenMode.Sharpen;
+                sharpenStrength = 1f;
+                sharpenKernelSize = 1;
             });
             
             // --- Blend ---
@@ -252,6 +459,9 @@ namespace UniTexEditor
                 blendScale = Vector2.one;
                 blendOffset = Vector2.zero;
             });
+            
+            // --- Color Variation Generator (Addon Trigger) ---
+            DrawColorVariation();
             
             // ... (lines 234-419 omitted) ...
 
@@ -415,5 +625,9 @@ namespace UniTexEditor
                 }
             }
         }
+        /// <summary>
+        /// Color Variation Generator Hook
+        /// </summary>
+        partial void DrawColorVariation();
     }
 }

@@ -1,0 +1,75 @@
+// ColorVariation.compute
+#pragma kernel CSMain
+
+Texture2D<float4> Source;
+RWTexture2D<float4> Result;
+
+// RGB Adjustment Parameters
+// 0: Additive, 1: Multiplicative
+int RGBMode; 
+float3 RGBParams; // R, G, B (0.0 ~ 2.0)
+
+// HSV Variation Parameters
+float HueShift; // 0.0 ~ 1.0 (Added to Hue)
+float SatScale; // Multiplied to Saturation
+
+// Utility: RGB to HSV
+float3 RGBtoHSV(float3 c)
+{
+    float4 K = float4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    float4 p = lerp(float4(c.bg, K.wz), float4(c.gb, K.xy), step(c.b, c.g));
+    float4 q = lerp(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
+
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return float3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+// Utility: HSV to RGB
+float3 HSVtoRGB(float3 c)
+{
+    float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    float3 p = abs(frac(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * lerp(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Result.GetDimensions(width, height);
+    
+    if (id.x >= width || id.y >= height)
+        return;
+        
+    float4 color = Source[id.xy];
+    float3 rgb = color.rgb;
+    
+    // 1. RGB Adjustment
+    if (RGBMode == 0) // Additive
+    {
+        // Value 1.0 is neutral. 
+        // Logic: rgb += (param - 1.0)
+        rgb += (RGBParams - 1.0);
+    }
+    else // Multiplicative
+    {
+        rgb *= RGBParams;
+    }
+    
+    rgb = saturate(rgb);
+    
+    // 2. HSV Variation
+    float3 hsv = RGBtoHSV(rgb);
+    
+    // Hue Shift
+    hsv.x = frac(hsv.x + HueShift);
+    
+    // Saturation Scale
+    hsv.y = saturate(hsv.y * SatScale);
+    
+    // Convert back
+    rgb = HSVtoRGB(hsv);
+    
+    Result[id.xy] = float4(rgb, color.a);
+}

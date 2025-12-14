@@ -81,21 +81,21 @@ namespace UniTexEditor
             bool hasNodes = false;
             
             // 色調補正ノードを追加
-            if (showColorCorrection && (hueShift != 0 || saturation != 1f || brightness != 1f || gamma != 1f || ccBlendOpacity > 0f))
-            {
-                var colorNode = new ColorCorrectionNode
+                if (showColorCorrection && (hueShift != 0 || saturation != 1f || brightness != 1f || gamma != 1f || ccBlendOpacity > 0f))
                 {
-                    hueShift = hueShift,
-                    saturation = saturation,
-                    brightness = brightness,
-                    gamma = gamma,
-                    targetColor = ccTargetColor,
-                    blendMode = ccBlendMode,
-                    blendOpacity = ccBlendOpacity
-                };
-                processor.AddNode(colorNode);
-                hasNodes = true;
-            }
+                    var colorNode = new ColorCorrectionNode
+                    {
+                        hueShift = hueShift,
+                        saturation = saturation,
+                        brightness = brightness,
+                        gamma = gamma,
+                        targetColor = ccTargetColor,
+                        blendMode = ccBlendMode,
+                        blendOpacity = ccBlendOpacity
+                    };
+                    processor.AddNode(colorNode);
+                    hasNodes = true;
+                }
             
             // ブレンドノードを追加
             if (showBlend && blendTexture != null)
@@ -367,7 +367,6 @@ namespace UniTexEditor
             hueShift = 0f;
             saturation = 1f;
             brightness = 1f;
-            gamma = 1f;
             
             ccTargetColor = Color.white;
             ccBlendMode = BlendMode.Normal;
