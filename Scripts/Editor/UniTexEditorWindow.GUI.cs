@@ -222,25 +222,25 @@ namespace UniTexEditor
             });
             
             // --- Levels ---
-            DrawToggleSection("Levels", ref showLevels, () => {
+            DrawToggleSection(Localization.GetText("section_levels"), ref showLevels, () => {
                 EditorGUI.BeginChangeCheck();
                 
-                EditorGUILayout.MinMaxSlider("Input Levels", ref lvlMinInput, ref lvlMaxInput, 0f, 1f);
+                EditorGUILayout.MinMaxSlider(Localization.GetText("label_input_levels_slider"), ref lvlMinInput, ref lvlMaxInput, 0f, 1f);
                 GUILayout.BeginHorizontal();
-                GUILayout.Label($"Min: {lvlMinInput:F2}", EditorStyles.miniLabel);
+                GUILayout.Label($"{Localization.GetText("label_min")}: {lvlMinInput:F2}", EditorStyles.miniLabel);
                 GUILayout.FlexibleSpace();
-                GUILayout.Label($"Max: {lvlMaxInput:F2}", EditorStyles.miniLabel);
+                GUILayout.Label($"{Localization.GetText("label_max")}: {lvlMaxInput:F2}", EditorStyles.miniLabel);
                 GUILayout.EndHorizontal();
                 
-                lvlMidGamma = EditorGUILayout.Slider("Mid (Gamma)", lvlMidGamma, 0.1f, 5f);
+                lvlMidGamma = EditorGUILayout.Slider(Localization.GetText("label_mid_gamma_slider"), lvlMidGamma, 0.1f, 5f);
                 
                 EditorGUILayout.Space(2);
                 
-                EditorGUILayout.MinMaxSlider("Output Levels", ref lvlMinOutput, ref lvlMaxOutput, 0f, 1f);
+                EditorGUILayout.MinMaxSlider(Localization.GetText("label_output_levels_slider"), ref lvlMinOutput, ref lvlMaxOutput, 0f, 1f);
                 GUILayout.BeginHorizontal();
-                GUILayout.Label($"Min: {lvlMinOutput:F2}", EditorStyles.miniLabel);
+                GUILayout.Label($"{Localization.GetText("label_min")}: {lvlMinOutput:F2}", EditorStyles.miniLabel);
                 GUILayout.FlexibleSpace();
-                GUILayout.Label($"Max: {lvlMaxOutput:F2}", EditorStyles.miniLabel);
+                GUILayout.Label($"{Localization.GetText("label_max")}: {lvlMaxOutput:F2}", EditorStyles.miniLabel);
                 GUILayout.EndHorizontal();
                 
                 if (EditorGUI.EndChangeCheck())
@@ -256,20 +256,20 @@ namespace UniTexEditor
             });
             
             // --- Tone Curve ---
-            DrawToggleSection("Tone Curve", ref showToneCurve, () => {
+            DrawToggleSection(Localization.GetText("section_tone_curve"), ref showToneCurve, () => {
                 EditorGUI.BeginChangeCheck();
                 
-                useRGBCurve = EditorGUILayout.ToggleLeft("RGB", useRGBCurve);
-                if (useRGBCurve) rgbCurve = EditorGUILayout.CurveField("RGB Curve", rgbCurve, Color.white, new Rect(0,0,1,1));
+                useRGBCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_rgb"), useRGBCurve);
+                if (useRGBCurve) rgbCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_rgb_toggle"), rgbCurve, Color.white, new Rect(0,0,1,1));
                 
-                useRedCurve = EditorGUILayout.ToggleLeft("Red", useRedCurve);
-                if (useRedCurve) redCurve = EditorGUILayout.CurveField("Red Curve", redCurve, Color.red, new Rect(0,0,1,1));
+                useRedCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_r"), useRedCurve);
+                if (useRedCurve) redCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_r_toggle"), redCurve, Color.red, new Rect(0,0,1,1));
                 
-                useGreenCurve = EditorGUILayout.ToggleLeft("Green", useGreenCurve);
-                if (useGreenCurve) greenCurve = EditorGUILayout.CurveField("Green Curve", greenCurve, Color.green, new Rect(0,0,1,1));
+                useGreenCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_g"), useGreenCurve);
+                if (useGreenCurve) greenCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_g_toggle"), greenCurve, Color.green, new Rect(0,0,1,1));
                 
-                useBlueCurve = EditorGUILayout.ToggleLeft("Blue", useBlueCurve);
-                if (useBlueCurve) blueCurve = EditorGUILayout.CurveField("Blue Curve", blueCurve, Color.blue, new Rect(0,0,1,1));
+                useBlueCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_b"), useBlueCurve);
+                if (useBlueCurve) blueCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_b_toggle"), blueCurve, Color.blue, new Rect(0,0,1,1));
                 
                 if (EditorGUI.EndChangeCheck())
                 {
@@ -287,14 +287,14 @@ namespace UniTexEditor
             });
             
             // --- Channel Mixer ---
-            DrawToggleSection("Channel Mixer", ref showChannelMixer, () => {
+            DrawToggleSection(Localization.GetText("section_channel_mixer"), ref showChannelMixer, () => {
                 EditorGUI.BeginChangeCheck();
                 
-                GUILayout.Label("Output Channels Source:", EditorStyles.miniLabel);
-                cmOutRed = (ChannelSource)EditorGUILayout.EnumPopup("Red Output", cmOutRed);
-                cmOutGreen = (ChannelSource)EditorGUILayout.EnumPopup("Green Output", cmOutGreen);
-                cmOutBlue = (ChannelSource)EditorGUILayout.EnumPopup("Blue Output", cmOutBlue);
-                cmOutAlpha = (ChannelSource)EditorGUILayout.EnumPopup("Alpha Output", cmOutAlpha);
+                GUILayout.Label(Localization.GetText("label_cm_source"), EditorStyles.miniLabel);
+                cmOutRed = (ChannelSource)EditorGUILayout.EnumPopup(Localization.GetText("label_cm_red_output"), cmOutRed);
+                cmOutGreen = (ChannelSource)EditorGUILayout.EnumPopup(Localization.GetText("label_cm_green_output"), cmOutGreen);
+                cmOutBlue = (ChannelSource)EditorGUILayout.EnumPopup(Localization.GetText("label_cm_blue_output"), cmOutBlue);
+                cmOutAlpha = (ChannelSource)EditorGUILayout.EnumPopup(Localization.GetText("label_cm_alpha_output"), cmOutAlpha);
                 
                 if (EditorGUI.EndChangeCheck())
                 {
@@ -308,116 +308,12 @@ namespace UniTexEditor
             });
 
             // --- Sharpen / Blur ---
-            DrawToggleSection("Sharpen / Blur", ref showSharpen, () => {
+            DrawToggleSection(Localization.GetText("section_sharpen"), ref showSharpen, () => {
                 EditorGUI.BeginChangeCheck();
                 
-                sharpenMode = (SharpenMode)EditorGUILayout.EnumPopup("Mode", sharpenMode);
-                sharpenStrength = EditorGUILayout.Slider("Strength", sharpenStrength, 0f, 5f);
-                sharpenKernelSize = EditorGUILayout.IntSlider("Kernel Size", sharpenKernelSize, 1, 5);
-                
-                if (EditorGUI.EndChangeCheck())
-                {
-                    RequestPreviewUpdate();
-                }
-            }, () => {
-                sharpenMode = SharpenMode.Sharpen;
-                sharpenStrength = 1f;
-                sharpenKernelSize = 1;
-            });
-            
-            // --- Levels ---
-            DrawToggleSection("Levels", ref showLevels, () => {
-                EditorGUI.BeginChangeCheck();
-                
-                EditorGUILayout.MinMaxSlider("Input Levels", ref lvlMinInput, ref lvlMaxInput, 0f, 1f);
-                GUILayout.BeginHorizontal();
-                GUILayout.Label($"Min: {lvlMinInput:F2}", EditorStyles.miniLabel);
-                GUILayout.FlexibleSpace();
-                GUILayout.Label($"Max: {lvlMaxInput:F2}", EditorStyles.miniLabel);
-                GUILayout.EndHorizontal();
-                
-                lvlMidGamma = EditorGUILayout.Slider("Mid (Gamma)", lvlMidGamma, 0.1f, 5f);
-                
-                EditorGUILayout.Space(2);
-                
-                EditorGUILayout.MinMaxSlider("Output Levels", ref lvlMinOutput, ref lvlMaxOutput, 0f, 1f);
-                GUILayout.BeginHorizontal();
-                GUILayout.Label($"Min: {lvlMinOutput:F2}", EditorStyles.miniLabel);
-                GUILayout.FlexibleSpace();
-                GUILayout.Label($"Max: {lvlMaxOutput:F2}", EditorStyles.miniLabel);
-                GUILayout.EndHorizontal();
-                
-                if (EditorGUI.EndChangeCheck())
-                {
-                    RequestPreviewUpdate();
-                }
-            }, () => {
-                lvlMinInput = 0f;
-                lvlMaxInput = 1f;
-                lvlMinOutput = 0f;
-                lvlMaxOutput = 1f;
-                lvlMidGamma = 1f;
-            });
-            
-            // --- Tone Curve ---
-            DrawToggleSection("Tone Curve", ref showToneCurve, () => {
-                EditorGUI.BeginChangeCheck();
-                
-                useRGBCurve = EditorGUILayout.ToggleLeft("RGB", useRGBCurve);
-                if (useRGBCurve) rgbCurve = EditorGUILayout.CurveField("RGB Curve", rgbCurve, Color.white, new Rect(0,0,1,1));
-                
-                useRedCurve = EditorGUILayout.ToggleLeft("Red", useRedCurve);
-                if (useRedCurve) redCurve = EditorGUILayout.CurveField("Red Curve", redCurve, Color.red, new Rect(0,0,1,1));
-                
-                useGreenCurve = EditorGUILayout.ToggleLeft("Green", useGreenCurve);
-                if (useGreenCurve) greenCurve = EditorGUILayout.CurveField("Green Curve", greenCurve, Color.green, new Rect(0,0,1,1));
-                
-                useBlueCurve = EditorGUILayout.ToggleLeft("Blue", useBlueCurve);
-                if (useBlueCurve) blueCurve = EditorGUILayout.CurveField("Blue Curve", blueCurve, Color.blue, new Rect(0,0,1,1));
-                
-                if (EditorGUI.EndChangeCheck())
-                {
-                    RequestPreviewUpdate();
-                }
-            }, () => {
-                rgbCurve = AnimationCurve.Linear(0,0,1,1);
-                redCurve = AnimationCurve.Linear(0,0,1,1);
-                greenCurve = AnimationCurve.Linear(0,0,1,1);
-                blueCurve = AnimationCurve.Linear(0,0,1,1);
-                useRGBCurve = true;
-                useRedCurve = false;
-                useGreenCurve = false;
-                useBlueCurve = false;
-            });
-            
-            // --- Channel Mixer ---
-            DrawToggleSection("Channel Mixer", ref showChannelMixer, () => {
-                EditorGUI.BeginChangeCheck();
-                
-                GUILayout.Label("Output Channels Source:", EditorStyles.miniLabel);
-                cmOutRed = (ChannelSource)EditorGUILayout.EnumPopup("Red Output", cmOutRed);
-                cmOutGreen = (ChannelSource)EditorGUILayout.EnumPopup("Green Output", cmOutGreen);
-                cmOutBlue = (ChannelSource)EditorGUILayout.EnumPopup("Blue Output", cmOutBlue);
-                cmOutAlpha = (ChannelSource)EditorGUILayout.EnumPopup("Alpha Output", cmOutAlpha);
-                
-                if (EditorGUI.EndChangeCheck())
-                {
-                    RequestPreviewUpdate();
-                }
-            }, () => {
-                cmOutRed = ChannelSource.Red;
-                cmOutGreen = ChannelSource.Green;
-                cmOutBlue = ChannelSource.Blue;
-                cmOutAlpha = ChannelSource.Alpha;
-            });
-
-            // --- Sharpen / Blur ---
-            DrawToggleSection("Sharpen / Blur", ref showSharpen, () => {
-                EditorGUI.BeginChangeCheck();
-                
-                sharpenMode = (SharpenMode)EditorGUILayout.EnumPopup("Mode", sharpenMode);
-                sharpenStrength = EditorGUILayout.Slider("Strength", sharpenStrength, 0f, 5f);
-                sharpenKernelSize = EditorGUILayout.IntSlider("Kernel Size", sharpenKernelSize, 1, 5);
+                sharpenMode = (SharpenMode)EditorGUILayout.EnumPopup(Localization.GetText("label_sharpen_mode"), sharpenMode);
+                sharpenStrength = EditorGUILayout.Slider(Localization.GetText("label_sharpen_strength"), sharpenStrength, 0f, 5f);
+                sharpenKernelSize = EditorGUILayout.IntSlider(Localization.GetText("label_sharpen_kernel"), sharpenKernelSize, 1, 5);
                 
                 if (EditorGUI.EndChangeCheck())
                 {
@@ -440,9 +336,9 @@ namespace UniTexEditor
                 
                 // Transform
                 EditorGUI.indentLevel++;
-                blendTiling = EditorGUILayout.Toggle("Tiling", blendTiling);
-                blendScale = EditorGUILayout.Vector2Field("Scale", blendScale);
-                blendOffset = EditorGUILayout.Vector2Field("Offset", blendOffset);
+                blendTiling = EditorGUILayout.Toggle(Localization.GetContent("label_tiling"), blendTiling);
+                blendScale = EditorGUILayout.Vector2Field(Localization.GetContent("label_scale"), blendScale);
+                blendOffset = EditorGUILayout.Vector2Field(Localization.GetContent("label_offset"), blendOffset);
                 EditorGUI.indentLevel--;
                 
                 if (EditorGUI.EndChangeCheck())

@@ -244,6 +244,191 @@
             "key": "msg_save_inverted_success",
             "text": "反転画像の保存完了: ",
             "tooltip": ""
+        },
+        {
+            "key": "section_cvg",
+            "text": "カラーバリエーション生成 (CVG)",
+            "tooltip": "現在の設定をベースに色違いのバリエーションを自動生成します。"
+        },
+        {
+            "key": "cvg_desc",
+            "text": "現在のプレビュー結果を元にバリエーションを生成します。",
+            "tooltip": ""
+        },
+        {
+            "key": "cvg_settings",
+            "text": "バリエーション設定",
+            "tooltip": ""
+        },
+        {
+            "key": "cvg_hue_steps",
+            "text": "色相ステップ数",
+            "tooltip": "色相環を分割する数を指定します。"
+        },
+        {
+            "key": "cvg_sat_steps",
+            "text": "彩度ステップ数",
+            "tooltip": "彩度の段階数を指定します。"
+        },
+        {
+            "key": "cvg_gen_grayscale",
+            "text": "グレースケール生成",
+            "tooltip": "彩度0（グレー）のバリエーションも1枚生成します。"
+        },
+        {
+            "key": "cvg_output",
+            "text": "出力",
+            "tooltip": ""
+        },
+        {
+            "key": "cvg_output_path",
+            "text": "出力先: {0}",
+            "tooltip": ""
+        },
+        {
+            "key": "cvg_btn_generate",
+            "text": "バリエーション生成",
+            "tooltip": "設定に基づいて複数のテクスチャを出力します。"
+        },
+        {
+            "key": "label_tiling",
+            "text": "タイリング",
+            "tooltip": "テクスチャを繰り返して配置します。"
+        },
+        {
+            "key": "label_scale",
+            "text": "スケール",
+            "tooltip": "テクスチャの拡大縮小率を指定します。"
+        },
+        {
+            "key": "label_offset",
+            "text": "オフセット",
+            "tooltip": "テクスチャの位置をずらします。"
+        },
+        {
+            "key": "label_min",
+            "text": "最小",
+            "tooltip": ""
+        },
+        {
+            "key": "label_max",
+            "text": "最大",
+            "tooltip": ""
+        },
+        {
+            "key": "label_cm_source",
+            "text": "出力チャンネルソース:",
+            "tooltip": "各チャンネルの出力元となる色成分を選びます。"
+        },
+        {
+            "key": "label_toggle_rgb",
+            "text": "RGB",
+            "tooltip": "RGB全体"
+        },
+        {
+            "key": "label_toggle_r",
+            "text": "Red",
+            "tooltip": "赤チャンネル"
+        },
+        {
+            "key": "label_toggle_g",
+            "text": "Green",
+            "tooltip": "緑チャンネル"
+        },
+        {
+            "key": "label_toggle_b",
+            "text": "Blue",
+            "tooltip": "青チャンネル"
+        },
+        {
+            "key": "section_levels",
+            "text": "レベル補正 (Levels)",
+            "tooltip": "入力・出力レベルを調整してコントラストを整えます。"
+        },
+        {
+            "key": "section_tone_curve",
+            "text": "トーンカーブ (Tone Curve)",
+            "tooltip": "カーブを使って明るさや各チャンネルを補正します。"
+        },
+        {
+            "key": "section_channel_mixer",
+            "text": "チャンネルミキサー (Channel Mixer)",
+            "tooltip": "RGBA各チャンネルの中身を入れ替えます。"
+        },
+        {
+            "key": "section_sharpen",
+            "text": "シャープ / ブラー (Sharpen / Blur)",
+            "tooltip": "輪郭強調やぼかし効果を適用します。"
+        },
+        {
+            "key": "label_input_levels_slider",
+            "text": "入力レベル",
+            "tooltip": "画像の黒点・白点を指定します。"
+        },
+        {
+            "key": "label_output_levels_slider",
+            "text": "出力レベル",
+            "tooltip": "出力範囲を制限します。"
+        },
+        {
+            "key": "label_mid_gamma_slider",
+            "text": "中間調 (Gamma)",
+            "tooltip": "中間域の明るさを調整します。"
+        },
+        {
+            "key": "label_curve_rgb_toggle",
+            "text": "RGBカーブ",
+            "tooltip": "全チャンネル共通の明るさを調整します。"
+        },
+        {
+            "key": "label_curve_r_toggle",
+            "text": "Redカーブ",
+            "tooltip": "赤チャンネルのみを調整します。"
+        },
+        {
+            "key": "label_curve_g_toggle",
+            "text": "Greenカーブ",
+            "tooltip": "緑チャンネルのみを調整します。"
+        },
+        {
+            "key": "label_curve_b_toggle",
+            "text": "Blueカーブ",
+            "tooltip": "青チャンネルのみを調整します。"
+        },
+        {
+            "key": "label_cm_red_output",
+            "text": "Red 出力",
+            "tooltip": "赤チャンネルに出力するソースを指定します。"
+        },
+        {
+            "key": "label_cm_green_output",
+            "text": "Green 出力",
+            "tooltip": "緑チャンネルに出力するソースを指定します。"
+        },
+        {
+            "key": "label_cm_blue_output",
+            "text": "Blue 出力",
+            "tooltip": "青チャンネルに出力するソースを指定します。"
+        },
+        {
+            "key": "label_cm_alpha_output",
+            "text": "Alpha 出力",
+            "tooltip": "アルファチャンネルに出力するソースを指定します。"
+        },
+        {
+            "key": "label_sharpen_mode",
+            "text": "モード",
+            "tooltip": "シャープ化するか、ぼかすかを選択します。"
+        },
+        {
+            "key": "label_sharpen_strength",
+            "text": "強度",
+            "tooltip": "効果の強さを調整します。"
+        },
+        {
+            "key": "label_sharpen_kernel",
+            "text": "カーネルサイズ",
+            "tooltip": "処理の広がり（滑らかさ）を指定します。"
         }
     ]
 }

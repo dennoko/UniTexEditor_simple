@@ -11,6 +11,7 @@ namespace UniTexEditor
         private bool showCVG = false;
         private int cvgHueCount = 8;
         private int cvgSatCount = 3;
+        private bool cvgGenGrayscale = false;
         private string cvgCustomOutputPath = "";
         
         // Preview
@@ -18,23 +19,25 @@ namespace UniTexEditor
         
         partial void DrawColorVariation()
         {
-            DrawToggleSection("Color Variation Generator", ref showCVG, () => {
+            DrawToggleSection(Localization.GetText("section_cvg"), ref showCVG, () => {
                 
-                GUILayout.Label("Generates variations based on the current preview result.", EditorStyles.wordWrappedLabel);
+                GUILayout.Label(Localization.GetText("cvg_desc"), EditorStyles.wordWrappedLabel);
                 EditorGUILayout.Space(5);
                 
                 // Variation Settings
-                GUILayout.Label("Variation Settings", EditorStyles.boldLabel);
-                cvgHueCount = EditorGUILayout.IntSlider("Hue Steps", cvgHueCount, 1, 36);
-                cvgSatCount = EditorGUILayout.IntSlider("Saturation Steps", cvgSatCount, 1, 10);
+                GUILayout.Label(Localization.GetText("cvg_settings"), EditorStyles.boldLabel);
+                cvgHueCount = EditorGUILayout.IntSlider(Localization.GetContent("cvg_hue_steps"), cvgHueCount, 1, 36);
+                cvgSatCount = EditorGUILayout.IntSlider(Localization.GetContent("cvg_sat_steps"), cvgSatCount, 1, 10);
+                cvgGenGrayscale = EditorGUILayout.Toggle(Localization.GetContent("cvg_gen_grayscale"), cvgGenGrayscale);
                 
                 EditorGUILayout.Space(5);
                 
                 // Output
-                GUILayout.Label("Output", EditorStyles.boldLabel);
+                GUILayout.Label(Localization.GetText("cvg_output"), EditorStyles.boldLabel);
                 GUILayout.BeginHorizontal();
-                GUILayout.Label(string.IsNullOrEmpty(cvgCustomOutputPath) ? "Output: [Source]_variations_Date/" : $"...{Path.GetFileName(cvgCustomOutputPath)}", EditorStyles.miniLabel);
-                if (GUILayout.Button("Select...", EditorStyles.miniButton, GUILayout.Width(60)))
+                string outputLabel = string.IsNullOrEmpty(cvgCustomOutputPath) ? "[Source]_variations_Date/" : $"...{Path.GetFileName(cvgCustomOutputPath)}";
+                GUILayout.Label(string.Format(Localization.GetText("cvg_output_path"), outputLabel), EditorStyles.miniLabel);
+                if (GUILayout.Button(Localization.GetContent("btn_select"), EditorStyles.miniButton, GUILayout.Width(60)))
                 {
                     string path = EditorUtility.OpenFolderPanel("Select Output Folder", "Assets", "");
                     if (!string.IsNullOrEmpty(path))
@@ -54,7 +57,7 @@ namespace UniTexEditor
                 
                 EditorGUILayout.Space(10);
                 
-                if (GUILayout.Button("Generate Variations", actionButtonStyle))
+                if (GUILayout.Button(Localization.GetContent("cvg_btn_generate"), actionButtonStyle))
                 {
                     GenerateColorVariations();
                 }
@@ -70,22 +73,16 @@ namespace UniTexEditor
             }
             
             // 1. Get Base Image from Main Processor (Full Resolution, Linear)
-            // Note: We need linear for processing, but GetResultAsTexture2D returns Linear. Perfect.
             Texture2D baseTexture = null;
             try
             {
-                // Ensure nodes are up to date (reuse ApplyAndSave logic or simliar?)
-                // Actually ApplyAndSave recreates nodes. We should do the same to be safe.
-                // But simplified: assuming user hasn't changed hidden settings.
-                // Better to call a "RebuildProcessor" method, but copying ApplyAndSave logic is safer.
-                
                 // Re-setup processor to ensure full res processing
                 processor.ClearNodes();
                 processor.MaskTexture = maskTexture;
                 processor.InvertMask = invertMask;
                 processor.MaskStrength = maskStrength;
                 
-                if (showColorCorrection) // Include new Mul params handled in Logic.cs logic
+                if (showColorCorrection)
                 {
                     var colorNode = new ColorCorrectionNode
                     {
@@ -175,18 +172,11 @@ namespace UniTexEditor
             
             try 
             {
-                int total = 1 + (cvgHueCount * cvgSatCount);
+                int total = cvgHueCount * cvgSatCount;
+                if (cvgGenGrayscale) total++; // Extra step for grayscale
                 int current = 0;
                 
-                EditorUtility.DisplayProgressBar("Generating Variations", "Processing Base Image...", 0f);
-                
-                // Save Base Image (Already Processed)
-                // Convert to sRGB for saving
-                Texture2D baseSRGB = TextureProcessor.ConvertLinearToSRGB(baseTexture);
-                byte[] baseBytes = baseSRGB.EncodeToPNG();
-                File.WriteAllBytes(Path.Combine(outputFolder, $"{fileName}_base.png"), baseBytes);
-                DestroyImmediate(baseSRGB);
-                current++;
+                EditorUtility.DisplayProgressBar("Generating Variations", "Init...", 0f);
                 
                 // Use baseTexture (Linear) as source for variations
                 RenderTexture baseRT = RenderTexture.GetTemporary(baseTexture.width, baseTexture.height, 0, RenderTextureFormat.ARGB32);
@@ -198,26 +188,38 @@ namespace UniTexEditor
                 varRT.enableRandomWrite = true;
                 varRT.Create();
                 
+                // Optional Grayscale Generation
+                if (cvgGenGrayscale)
+                {
+                    EditorUtility.DisplayProgressBar("Generating Variations", "Grayscale Variation...", (float)current / total);
+                    
+                    // Saturation = 0, Hue = 0 (doesn't matter)
+                    DispatchCVGShader(baseRT, varRT, Vector3.one, 0f, 0f);
+                    
+                    Texture2D varTex = TextureProcessor.RenderTextureToTexture2D(varRT);
+                    Texture2D varTexSRGB = TextureProcessor.ConvertLinearToSRGB(varTex);
+                    byte[] bytes = varTexSRGB.EncodeToPNG();
+                    File.WriteAllBytes(Path.Combine(outputFolder, $"{fileName}_grayscale.png"), bytes);
+                    
+                    DestroyImmediate(varTex);
+                    DestroyImmediate(varTexSRGB);
+                    current++;
+                }
+
                 for (int h = 0; h < cvgHueCount; h++)
                 {
                     for (int s = 0; s < cvgSatCount; s++)
                     {
                         float progress = (float)current / total;
-                        EditorUtility.DisplayProgressBar("Generating Variations", $"Hue {h}/{cvgHueCount} Sat {s}/{cvgSatCount}", progress);
+                        EditorUtility.DisplayProgressBar("Generating Variations", $"Hue {h + 1}/{cvgHueCount} Sat {s + 1}/{cvgSatCount}", progress);
                         
                         float hueShift = (float)h / cvgHueCount; // 0..1
                         float satScale = (float)(s + 1) / cvgSatCount; 
                         
-                        // Pass 2: HSV Shift
-                        // RGB Adjust is disabled (Identity)
-                        DispatchCVGShader(baseRT, varRT, Vector3.one, hueShift, satScale); // Vector3.one for Multiplicative Identity
+                        DispatchCVGShader(baseRT, varRT, Vector3.one, hueShift, satScale); // Identity RGB multiplier
                         
-                        // Result varRT is Linear (because source was Linear and Shader logic preserves linear-ish logic for colors usually, or needs sRGB conversion depending on Space)
-                        // Wait, Compute Shader usually works on values. If source is Linear, result is Linear.
-                        // We need to convert to sRGB before saving.
-                        
-                        Texture2D varTex = TextureProcessor.RenderTextureToTexture2D(varRT); // Gets Linear
-                        Texture2D varTexSRGB = TextureProcessor.ConvertLinearToSRGB(varTex); // Convert to sRGB
+                        Texture2D varTex = TextureProcessor.RenderTextureToTexture2D(varRT);
+                        Texture2D varTexSRGB = TextureProcessor.ConvertLinearToSRGB(varTex);
                         
                         byte[] bytes = varTexSRGB.EncodeToPNG();
                         File.WriteAllBytes(Path.Combine(outputFolder, $"{fileName}_h{h}_s{s}.png"), bytes);

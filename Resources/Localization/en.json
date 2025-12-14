@@ -244,6 +244,191 @@
             "key": "msg_save_inverted_success",
             "text": "Saved Inverted Mask: ",
             "tooltip": ""
+        },
+        {
+            "key": "section_cvg",
+            "text": "Color Variation Generator",
+            "tooltip": "Automatically generate color variations based on current settings."
+        },
+        {
+            "key": "cvg_desc",
+            "text": "Generates variations based on the current preview result.",
+            "tooltip": ""
+        },
+        {
+            "key": "cvg_settings",
+            "text": "Variation Settings",
+            "tooltip": ""
+        },
+        {
+            "key": "cvg_hue_steps",
+            "text": "Hue Steps",
+            "tooltip": "Number of hue variations to generate."
+        },
+        {
+            "key": "cvg_sat_steps",
+            "text": "Saturation Steps",
+            "tooltip": "Number of saturation levels to generate."
+        },
+        {
+            "key": "cvg_gen_grayscale",
+            "text": "Generate Grayscale",
+            "tooltip": "Also generate a grayscale (saturation=0) variation."
+        },
+        {
+            "key": "cvg_output",
+            "text": "Output",
+            "tooltip": ""
+        },
+        {
+            "key": "cvg_output_path",
+            "text": "Output: {0}",
+            "tooltip": ""
+        },
+        {
+            "key": "cvg_btn_generate",
+            "text": "Generate Variations",
+            "tooltip": "Generate multiple texture variations based on settings."
+        },
+        {
+            "key": "label_tiling",
+            "text": "Tiling",
+            "tooltip": "Repeat texture in all directions."
+        },
+        {
+            "key": "label_scale",
+            "text": "Scale",
+            "tooltip": "Texture scale multiplier."
+        },
+        {
+            "key": "label_offset",
+            "text": "Offset",
+            "tooltip": "Texture position offset."
+        },
+        {
+            "key": "label_min",
+            "text": "Min",
+            "tooltip": ""
+        },
+        {
+            "key": "label_max",
+            "text": "Max",
+            "tooltip": ""
+        },
+        {
+            "key": "label_cm_source",
+            "text": "Output Channels Source:",
+            "tooltip": "Select source for each output channel."
+        },
+        {
+            "key": "label_toggle_rgb",
+            "text": "RGB",
+            "tooltip": "RGB channel"
+        },
+        {
+            "key": "label_toggle_r",
+            "text": "Red",
+            "tooltip": "Red channel"
+        },
+        {
+            "key": "label_toggle_g",
+            "text": "Green",
+            "tooltip": "Green channel"
+        },
+        {
+            "key": "label_toggle_b",
+            "text": "Blue",
+            "tooltip": "Blue channel"
+        },
+        {
+            "key": "section_levels",
+            "text": "Levels",
+            "tooltip": "Adjust input and output levels for contrast."
+        },
+        {
+            "key": "section_tone_curve",
+            "text": "Tone Curve",
+            "tooltip": "Adjust brightness using curves."
+        },
+        {
+            "key": "section_channel_mixer",
+            "text": "Channel Mixer",
+            "tooltip": "Remap RGBA channels."
+        },
+        {
+            "key": "section_sharpen",
+            "text": "Sharpen / Blur",
+            "tooltip": "Apply sharpening or blurring effects."
+        },
+        {
+            "key": "label_input_levels_slider",
+            "text": "Input Levels",
+            "tooltip": "Set black and white points."
+        },
+        {
+            "key": "label_output_levels_slider",
+            "text": "Output Levels",
+            "tooltip": "Clamp output range."
+        },
+        {
+            "key": "label_mid_gamma_slider",
+            "text": "Mid (Gamma)",
+            "tooltip": "Adjust midtone brightness."
+        },
+        {
+            "key": "label_curve_rgb_toggle",
+            "text": "RGB Curve",
+            "tooltip": "Curve affecting all channels."
+        },
+        {
+            "key": "label_curve_r_toggle",
+            "text": "Red Curve",
+            "tooltip": "Curve affecting Red channel."
+        },
+        {
+            "key": "label_curve_g_toggle",
+            "text": "Green Curve",
+            "tooltip": "Curve affecting Green channel."
+        },
+        {
+            "key": "label_curve_b_toggle",
+            "text": "Blue Curve",
+            "tooltip": "Curve affecting Blue channel."
+        },
+        {
+            "key": "label_cm_red_output",
+            "text": "Red Output",
+            "tooltip": "Source for Red channel."
+        },
+        {
+            "key": "label_cm_green_output",
+            "text": "Green Output",
+            "tooltip": "Source for Green channel."
+        },
+        {
+            "key": "label_cm_blue_output",
+            "text": "Blue Output",
+            "tooltip": "Source for Blue channel."
+        },
+        {
+            "key": "label_cm_alpha_output",
+            "text": "Alpha Output",
+            "tooltip": "Source for Alpha channel."
+        },
+        {
+            "key": "label_sharpen_mode",
+            "text": "Mode",
+            "tooltip": "Sharpen or Blur."
+        },
+        {
+            "key": "label_sharpen_strength",
+            "text": "Strength",
+            "tooltip": "Effect intensity."
+        },
+        {
+            "key": "label_sharpen_kernel",
+            "text": "Kernel Size",
+            "tooltip": "Convolution kernel size."
         }
     ]
 }
