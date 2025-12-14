@@ -221,6 +221,68 @@ namespace UniTexEditor
                 ccBlendOpacity = 0f;
             });
             
+            // --- Tone Curve ---
+            DrawToggleSection(Localization.GetText("section_tone_curve"), ref showToneCurve, () => {
+                EditorGUI.BeginChangeCheck();
+                
+                useRGBCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_rgb"), useRGBCurve);
+                if (useRGBCurve) rgbCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_rgb_toggle"), rgbCurve, Color.white, new Rect(0,0,1,1));
+                
+                useRedCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_r"), useRedCurve);
+                if (useRedCurve) redCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_r_toggle"), redCurve, Color.red, new Rect(0,0,1,1));
+                
+                useGreenCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_g"), useGreenCurve);
+                if (useGreenCurve) greenCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_g_toggle"), greenCurve, Color.green, new Rect(0,0,1,1));
+                
+                useBlueCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_b"), useBlueCurve);
+                if (useBlueCurve) blueCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_b_toggle"), blueCurve, Color.blue, new Rect(0,0,1,1));
+                
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RequestPreviewUpdate();
+                }
+            }, () => {
+                rgbCurve = AnimationCurve.Linear(0,0,1,1);
+                redCurve = AnimationCurve.Linear(0,0,1,1);
+                greenCurve = AnimationCurve.Linear(0,0,1,1);
+                blueCurve = AnimationCurve.Linear(0,0,1,1);
+                useRGBCurve = true;
+                useRedCurve = false;
+                useGreenCurve = false;
+                useBlueCurve = false;
+            });
+            
+            // --- Blend ---
+            DrawToggleSection(Localization.GetText("section_blend"), ref showBlend, () => {
+                EditorGUI.BeginChangeCheck();
+                
+                blendTexture = (Texture2D)EditorGUILayout.ObjectField(Localization.GetContent("label_blend_tex"), blendTexture, typeof(Texture2D), false);
+                blendMaskTexture = (Texture2D)EditorGUILayout.ObjectField(Localization.GetContent("label_blend_mask"), blendMaskTexture, typeof(Texture2D), false);
+                blendMode = (BlendMode)EditorGUILayout.EnumPopup(Localization.GetContent("label_blend_mode"), blendMode);
+                blendStrength = EditorGUILayout.Slider(Localization.GetContent("label_opacity"), blendStrength, 0f, 1f);
+                
+                // Transform
+                EditorGUI.indentLevel++;
+                blendTiling = EditorGUILayout.Toggle(Localization.GetContent("label_tiling"), blendTiling);
+                blendScale = EditorGUILayout.Vector2Field(Localization.GetContent("label_scale"), blendScale);
+                blendOffset = EditorGUILayout.Vector2Field(Localization.GetContent("label_offset"), blendOffset);
+                EditorGUI.indentLevel--;
+                
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RequestPreviewUpdate();
+                }
+            }, () => {
+                // Reset Logic
+                blendTexture = null;
+                blendMaskTexture = null;
+                blendMode = BlendMode.Normal;
+                blendStrength = 1f;
+                blendTiling = true;
+                blendScale = Vector2.one;
+                blendOffset = Vector2.zero;
+            });
+            
             // --- Levels ---
             DrawToggleSection(Localization.GetText("section_levels"), ref showLevels, () => {
                 EditorGUI.BeginChangeCheck();
@@ -254,36 +316,23 @@ namespace UniTexEditor
                 lvlMaxOutput = 1f;
                 lvlMidGamma = 1f;
             });
-            
-            // --- Tone Curve ---
-            DrawToggleSection(Localization.GetText("section_tone_curve"), ref showToneCurve, () => {
+
+            // --- Sharpen / Blur ---
+            DrawToggleSection(Localization.GetText("section_sharpen"), ref showSharpen, () => {
                 EditorGUI.BeginChangeCheck();
                 
-                useRGBCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_rgb"), useRGBCurve);
-                if (useRGBCurve) rgbCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_rgb_toggle"), rgbCurve, Color.white, new Rect(0,0,1,1));
-                
-                useRedCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_r"), useRedCurve);
-                if (useRedCurve) redCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_r_toggle"), redCurve, Color.red, new Rect(0,0,1,1));
-                
-                useGreenCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_g"), useGreenCurve);
-                if (useGreenCurve) greenCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_g_toggle"), greenCurve, Color.green, new Rect(0,0,1,1));
-                
-                useBlueCurve = EditorGUILayout.ToggleLeft(Localization.GetText("label_toggle_b"), useBlueCurve);
-                if (useBlueCurve) blueCurve = EditorGUILayout.CurveField(Localization.GetText("label_curve_b_toggle"), blueCurve, Color.blue, new Rect(0,0,1,1));
+                sharpenMode = (SharpenMode)EditorGUILayout.EnumPopup(Localization.GetText("label_sharpen_mode"), sharpenMode);
+                sharpenStrength = EditorGUILayout.Slider(Localization.GetText("label_sharpen_strength"), sharpenStrength, 0f, 5f);
+                sharpenKernelSize = EditorGUILayout.IntSlider(Localization.GetText("label_sharpen_kernel"), sharpenKernelSize, 1, 5);
                 
                 if (EditorGUI.EndChangeCheck())
                 {
                     RequestPreviewUpdate();
                 }
             }, () => {
-                rgbCurve = AnimationCurve.Linear(0,0,1,1);
-                redCurve = AnimationCurve.Linear(0,0,1,1);
-                greenCurve = AnimationCurve.Linear(0,0,1,1);
-                blueCurve = AnimationCurve.Linear(0,0,1,1);
-                useRGBCurve = true;
-                useRedCurve = false;
-                useGreenCurve = false;
-                useBlueCurve = false;
+                sharpenMode = SharpenMode.Sharpen;
+                sharpenStrength = 1f;
+                sharpenKernelSize = 1;
             });
             
             // --- Channel Mixer ---
@@ -305,55 +354,6 @@ namespace UniTexEditor
                 cmOutGreen = ChannelSource.Green;
                 cmOutBlue = ChannelSource.Blue;
                 cmOutAlpha = ChannelSource.Alpha;
-            });
-
-            // --- Sharpen / Blur ---
-            DrawToggleSection(Localization.GetText("section_sharpen"), ref showSharpen, () => {
-                EditorGUI.BeginChangeCheck();
-                
-                sharpenMode = (SharpenMode)EditorGUILayout.EnumPopup(Localization.GetText("label_sharpen_mode"), sharpenMode);
-                sharpenStrength = EditorGUILayout.Slider(Localization.GetText("label_sharpen_strength"), sharpenStrength, 0f, 5f);
-                sharpenKernelSize = EditorGUILayout.IntSlider(Localization.GetText("label_sharpen_kernel"), sharpenKernelSize, 1, 5);
-                
-                if (EditorGUI.EndChangeCheck())
-                {
-                    RequestPreviewUpdate();
-                }
-            }, () => {
-                sharpenMode = SharpenMode.Sharpen;
-                sharpenStrength = 1f;
-                sharpenKernelSize = 1;
-            });
-            
-            // --- Blend ---
-            DrawToggleSection(Localization.GetText("section_blend"), ref showBlend, () => {
-                EditorGUI.BeginChangeCheck();
-                
-                blendTexture = (Texture2D)EditorGUILayout.ObjectField(Localization.GetContent("label_blend_tex"), blendTexture, typeof(Texture2D), false);
-                blendMaskTexture = (Texture2D)EditorGUILayout.ObjectField(Localization.GetContent("label_blend_mask"), blendMaskTexture, typeof(Texture2D), false);
-                blendMode = (BlendMode)EditorGUILayout.EnumPopup(Localization.GetContent("label_blend_mode"), blendMode);
-                blendStrength = EditorGUILayout.Slider(Localization.GetContent("label_opacity"), blendStrength, 0f, 1f);
-                
-                // Transform
-                EditorGUI.indentLevel++;
-                blendTiling = EditorGUILayout.Toggle(Localization.GetContent("label_tiling"), blendTiling);
-                blendScale = EditorGUILayout.Vector2Field(Localization.GetContent("label_scale"), blendScale);
-                blendOffset = EditorGUILayout.Vector2Field(Localization.GetContent("label_offset"), blendOffset);
-                EditorGUI.indentLevel--;
-                
-                if (EditorGUI.EndChangeCheck())
-                {
-                    RequestPreviewUpdate();
-                }
-            }, () => {
-                // Reset Logic
-                blendTexture = null;
-                blendMaskTexture = null;
-                blendMode = BlendMode.Normal;
-                blendStrength = 1f;
-                blendTiling = true;
-                blendScale = Vector2.one;
-                blendOffset = Vector2.zero;
             });
             
             // --- Color Variation Generator (Addon Trigger) ---
