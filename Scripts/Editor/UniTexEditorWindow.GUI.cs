@@ -322,8 +322,8 @@ namespace UniTexEditor
                 EditorGUI.BeginChangeCheck();
                 
                 sharpenMode = (SharpenMode)EditorGUILayout.EnumPopup(Localization.GetText("label_sharpen_mode"), sharpenMode);
-                sharpenStrength = EditorGUILayout.Slider(Localization.GetText("label_sharpen_strength"), sharpenStrength, 0f, 5f);
-                sharpenKernelSize = EditorGUILayout.IntSlider(Localization.GetText("label_sharpen_kernel"), sharpenKernelSize, 1, 5);
+                sharpenStrength = EditorGUILayout.Slider(Localization.GetContent("label_sharpen_strength"), sharpenStrength, 0f, 2f);
+                sharpenRange = EditorGUILayout.Slider(Localization.GetContent("label_sharpen_range"), sharpenRange, 0.5f, 20f);
                 
                 if (EditorGUI.EndChangeCheck())
                 {
@@ -332,7 +332,7 @@ namespace UniTexEditor
             }, () => {
                 sharpenMode = SharpenMode.Sharpen;
                 sharpenStrength = 1f;
-                sharpenKernelSize = 1;
+                sharpenRange = 3f;
             });
             
             // --- Channel Mixer ---

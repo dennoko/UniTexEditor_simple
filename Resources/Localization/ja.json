@@ -426,9 +426,9 @@
             "tooltip": "効果の強さを調整します。"
         },
         {
-            "key": "label_sharpen_kernel",
-            "text": "カーネルサイズ",
-            "tooltip": "処理の広がり（滑らかさ）を指定します。"
+            "key": "label_sharpen_range",
+            "text": "範囲",
+            "tooltip": "ブラー/シャープ処理の影響範囲をピクセル単位で指定します。大きいほど広範囲に影響します。"
         }
     ]
 }

@@ -124,7 +124,7 @@ namespace UniTexEditor
 
                 if (showSharpen)
                 {
-                    var sharpenNode = new SharpenNode { mode = sharpenMode, strength = sharpenStrength, kernelSize = sharpenKernelSize };
+                    var sharpenNode = new SharpenNode { mode = sharpenMode, strength = sharpenStrength, range = sharpenRange };
                     processor.AddNode(sharpenNode);
                 }
                 

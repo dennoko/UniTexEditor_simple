@@ -1,0 +1,77 @@
+// SharpenHorizontal.compute - 水平方向の1Dガウシアンブラー/シャープネス
+#pragma kernel CSMain
+
+Texture2D<float4> Source;
+RWTexture2D<float4> Result;
+
+int Mode; // 0: Sharpen, 1: Blur
+float Strength; // シャープネス強度 or ブラー強度
+float Range; // ブラー範囲（ピクセル単位の半径）
+uint2 TextureSize;
+
+// ガウシアン重み計算（1D）
+float GaussianWeight(float x, float sigma)
+{
+    return exp(-(x * x) / (2.0 * sigma * sigma)) / (sqrt(2.0 * 3.14159265) * sigma);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= TextureSize.x || id.y >= TextureSize.y)
+        return;
+    
+    float4 originalColor = Source[id.xy];
+    float4 resultColor = originalColor;
+    
+    // 3シグマルールに基づくシグマ値の計算
+    // Range = 3 * sigma なので sigma = Range / 3
+    float sigma = max(0.5, Range / 3.0);
+    
+    // カーネル半径（整数）を計算
+    // Range値から適切な半径を決定
+    int radius = max(1, int(ceil(Range)));
+    
+    if (Mode == 0) // Sharpen (Unsharp Mask)
+    {
+        // 水平方向にブラー
+        float4 blurredColor = float4(0, 0, 0, 0);
+        float totalWeight = 0.0;
+        
+        for (int x = -radius; x <= radius; x++)
+        {
+            int2 samplePos = int2(id.x + x, id.y);
+            samplePos.x = clamp(samplePos.x, 0, int(TextureSize.x) - 1);
+            
+            float weight = GaussianWeight(float(x), sigma);
+            blurredColor += Source[samplePos] * weight;
+            totalWeight += weight;
+        }
+        
+        blurredColor /= totalWeight;
+        
+        // シャープネスは2パス目で適用するため、ここではブラー結果のみ出力
+        resultColor = blurredColor;
+    }
+    else if (Mode == 1) // Blur (Gaussian)
+    {
+        // 水平方向にブラー
+        float4 blurredColor = float4(0, 0, 0, 0);
+        float totalWeight = 0.0;
+        
+        for (int x = -radius; x <= radius; x++)
+        {
+            int2 samplePos = int2(id.x + x, id.y);
+            samplePos.x = clamp(samplePos.x, 0, int(TextureSize.x) - 1);
+            
+            float weight = GaussianWeight(float(x), sigma);
+            blurredColor += Source[samplePos] * weight;
+            totalWeight += weight;
+        }
+        
+        blurredColor /= totalWeight;
+        resultColor = blurredColor;
+    }
+    
+    Result[id.xy] = resultColor;
+}

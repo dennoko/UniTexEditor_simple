@@ -3,8 +3,8 @@
 
 #pragma kernel CSMain
 
-Texture2D<float> Source;
-RWTexture2D<float> Result;
+Texture2D<float4> Source;
+RWTexture2D<float4> Result;
 
 int Invert;
 float Strength;
@@ -27,7 +27,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         (id.y * srcHeight) / height
     );
     
-    float v = Source[srcCoord];
+    // Rチャンネルからグレースケール値を取得
+    float v = Source[srcCoord].r;
     
     // 反転
     if (Invert > 0)
@@ -40,5 +41,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     // Strength 0.0 = マスクなし（すべて1.0＝効果を全適用）
     v = lerp(1.0, v, Strength);
     
-    Result[id.xy] = v;
+    // グレースケール値をRGBチャンネル全てに設定、Alphaは1.0
+    Result[id.xy] = float4(v, v, v, 1.0);
 }

@@ -426,9 +426,9 @@
             "tooltip": "Effect intensity."
         },
         {
-            "key": "label_sharpen_kernel",
-            "text": "Kernel Size",
-            "tooltip": "Convolution kernel size."
+            "key": "label_sharpen_range",
+            "text": "Range",
+            "tooltip": "Effect radius in pixels. Larger values affect wider area."
         }
     ]
 }

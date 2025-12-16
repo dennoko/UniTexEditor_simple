@@ -139,7 +139,7 @@ namespace UniTexEditor
                 {
                     mode = sharpenMode,
                     strength = sharpenStrength,
-                    kernelSize = sharpenKernelSize
+                    range = sharpenRange
                 };
                 processor.AddNode(sharpenNode);
                 hasNodes = true;
@@ -275,7 +275,7 @@ namespace UniTexEditor
                     {
                         mode = sharpenMode,
                         strength = sharpenStrength,
-                        kernelSize = sharpenKernelSize
+                        range = sharpenRange
                     };
                     processor.AddNode(sharpenNode);
                 }
@@ -382,7 +382,7 @@ namespace UniTexEditor
             
             sharpenMode = SharpenMode.Sharpen;
             sharpenStrength = 1f;
-            sharpenKernelSize = 5;
+            sharpenRange = 3f;
             
             // トーンカーブをリセット
             rgbCurve = AnimationCurve.Linear(0, 0, 1, 1);
@@ -433,12 +433,17 @@ namespace UniTexEditor
             }
 
             string defaultName = maskTexture.name + "_inverted";
-            string path = EditorUtility.SaveFilePanel("Save Inverted Mask", "Assets", defaultName, "png");
+            
+            // マスクテクスチャのディレクトリパスを取得
+            string maskPath = AssetDatabase.GetAssetPath(maskTexture);
+            string defaultDirectory = string.IsNullOrEmpty(maskPath) ? "Assets" : Path.GetDirectoryName(maskPath);
+            
+            string path = EditorUtility.SaveFilePanel("Save Inverted Mask", defaultDirectory, defaultName, "png");
 
             if (string.IsNullOrEmpty(path)) return;
 
             // マスク処理用の一時RenderTextureを作成
-            RenderTexture rt = RenderTexture.GetTemporary(maskTexture.width, maskTexture.height, 0, RenderTextureFormat.RFloat);
+            RenderTexture rt = RenderTexture.GetTemporary(maskTexture.width, maskTexture.height, 0, RenderTextureFormat.ARGBFloat);
             rt.enableRandomWrite = true;
             rt.Create();
 

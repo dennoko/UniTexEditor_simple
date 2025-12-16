@@ -57,7 +57,7 @@ namespace UniTexEditor
         private bool showSharpen = false;
         private SharpenMode sharpenMode = SharpenMode.Sharpen;
         private float sharpenStrength = 1f;
-        private int sharpenKernelSize = 5;
+        private float sharpenRange = 3f;
         
         // トーンカーブパラメータ
         private bool showToneCurve = false;
