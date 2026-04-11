@@ -23,7 +23,7 @@ namespace UniTexEditor
     {
         private static string currentLanguage = "ja";
         private static Dictionary<string, GUIContent> contentCache = new Dictionary<string, GUIContent>();
-        
+
         public static string CurrentLanguage
         {
             get => currentLanguage;
@@ -47,11 +47,10 @@ namespace UniTexEditor
         private static void LoadLanguage(string langCode)
         {
             contentCache.Clear();
-            
+
             TextAsset jsonAsset = Resources.Load<TextAsset>($"Localization/{langCode}");
             if (jsonAsset == null)
             {
-                // Fallback to ja if not found, or create empty if ja missing
                 jsonAsset = Resources.Load<TextAsset>("Localization/ja");
                 if (jsonAsset == null) return;
             }
@@ -71,15 +70,18 @@ namespace UniTexEditor
         }
 
         /// <summary>
-        /// 指定したキーのGUIContentを取得。見つからない場合はキー自身を返す。
+        /// 指定したキーの GUIContent を取得。
+        /// 見つからない場合はキー自身を text とする GUIContent を生成してキャッシュする。
         /// </summary>
         public static GUIContent GetContent(string key)
         {
             if (contentCache.TryGetValue(key, out var content))
-            {
                 return content;
-            }
-            return new GUIContent(key);
+
+            // キャッシュミスした場合もキャッシュに登録して以後のアロケートを防ぐ
+            var fallback = new GUIContent(key);
+            contentCache[key] = fallback;
+            return fallback;
         }
 
         /// <summary>
@@ -88,9 +90,7 @@ namespace UniTexEditor
         public static string GetText(string key)
         {
             if (contentCache.TryGetValue(key, out var content))
-            {
                 return content.text;
-            }
             return key;
         }
     }

@@ -6,9 +6,11 @@ namespace UniTexEditor
 {
     public partial class UniTexEditorWindow
     {
+        // ─── プレビュー更新フロー ─────────────────────────────────────────
+
         /// <summary>
-        /// プレビューの再計算をリクエスト
-        /// 変更検知から直接呼び出し、OnGUI処理終了後に確実にリビルドさせる
+        /// プレビューの再計算をリクエストする。
+        /// 変更検知から直接呼び出し、OnGUI 処理終了後に確実にリビルドさせる。
         /// </summary>
         private void RequestPreviewUpdate(bool forceImmediate = false)
         {
@@ -26,10 +28,7 @@ namespace UniTexEditor
                 return;
             }
 
-            if (previewUpdateScheduled)
-            {
-                return;
-            }
+            if (previewUpdateScheduled) return;
 
             previewUpdateScheduled = true;
             EditorApplication.delayCall += ProcessPendingPreview;
@@ -42,14 +41,11 @@ namespace UniTexEditor
         {
             previewUpdateScheduled = false;
 
-            if (!autoPreview || !previewDirty)
-            {
-                return;
-            }
+            if (!autoPreview || !previewDirty) return;
 
             UpdatePreview();
         }
-        
+
         private void UpdatePreview()
         {
             EditorApplication.delayCall -= ProcessPendingPreview;
@@ -60,13 +56,7 @@ namespace UniTexEditor
                 previewDirty = false;
                 return;
             }
-            
-            // マスク設定を適用
-            processor.MaskTexture = maskTexture;
-            processor.InvertMask = invertMask;
-            processor.MaskStrength = maskStrength;
-            
-            // 既存のプレビューを破棄
+
             if (resultPreview != null)
             {
                 DestroyImmediate(resultPreview);
@@ -74,33 +64,61 @@ namespace UniTexEditor
             }
 
             previewDirty = false;
-            
-            // ノードをクリアして再構築
-            processor.ClearNodes();
-            
-            bool hasNodes = false;
-            
-            // 色調補正ノードを追加
-                if (showColorCorrection && (hueShift != 0 || saturation != 1f || brightness != 1f || gamma != 1f || ccBlendOpacity > 0f))
+
+            ConfigureProcessor();
+
+            try
+            {
+                Texture2D linearResult = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION);
+                if (linearResult != null)
                 {
-                    var colorNode = new ColorCorrectionNode
-                    {
-                        hueShift = hueShift,
-                        saturation = saturation,
-                        brightness = brightness,
-                        gamma = gamma,
-                        targetColor = ccTargetColor,
-                        blendMode = ccBlendMode,
-                        blendOpacity = ccBlendOpacity
-                    };
-                    processor.AddNode(colorNode);
-                    hasNodes = true;
+                    resultPreview = TextureProcessor.ConvertLinearToSRGB(linearResult);
+                    DestroyImmediate(linearResult);
                 }
-            
-            // ブレンドノードを追加
+                else
+                {
+                    Debug.LogWarning("プレビュー生成結果が null です");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"プレビュー生成エラー: {e.Message}\n{e.StackTrace}");
+            }
+
+            Repaint();
+        }
+
+        // ─── ノード構築（唯一の実装場所） ────────────────────────────────
+
+        /// <summary>
+        /// 現在の GUI パラメータに基づいて processor を再構成する。
+        /// UpdatePreview / ApplyAndSave / GenerateColorVariations の共通処理。
+        /// </summary>
+        private void ConfigureProcessor()
+        {
+            processor.MaskTexture = maskTexture;
+            processor.InvertMask = invertMask;
+            processor.MaskStrength = maskStrength;
+
+            processor.ClearNodes();
+
+            if (showColorCorrection && (hueShift != 0 || saturation != 1f || brightness != 1f || gamma != 1f || ccBlendOpacity > 0f))
+            {
+                processor.AddNode(new ColorCorrectionNode
+                {
+                    hueShift = hueShift,
+                    saturation = saturation,
+                    brightness = brightness,
+                    gamma = gamma,
+                    targetColor = ccTargetColor,
+                    blendMode = ccBlendMode,
+                    blendOpacity = ccBlendOpacity
+                });
+            }
+
             if (showBlend && blendTexture != null)
             {
-                var blendNode = new BlendNode
+                processor.AddNode(new BlendNode
                 {
                     blendTexture = blendTexture,
                     blendMaskTexture = blendMaskTexture,
@@ -109,15 +127,12 @@ namespace UniTexEditor
                     tiling = blendTiling,
                     scale = blendScale,
                     offset = blendOffset
-                };
-                processor.AddNode(blendNode);
-                hasNodes = true;
+                });
             }
-            
-            // トーンカーブノードを追加
+
             if (showToneCurve && (useRGBCurve || useRedCurve || useGreenCurve || useBlueCurve))
             {
-                var toneCurveNode = new ToneCurveNode
+                processor.AddNode(new ToneCurveNode
                 {
                     rgbCurve = rgbCurve,
                     redCurve = redCurve,
@@ -127,84 +142,45 @@ namespace UniTexEditor
                     useRedCurve = useRedCurve,
                     useGreenCurve = useGreenCurve,
                     useBlueCurve = useBlueCurve
-                };
-                processor.AddNode(toneCurveNode);
-                hasNodes = true;
+                });
             }
 
-            // シャープネス/ぼかしノードを追加
             if (showSharpen)
             {
-                var sharpenNode = new SharpenNode
+                processor.AddNode(new SharpenNode
                 {
                     mode = sharpenMode,
                     strength = sharpenStrength,
                     kernelSize = sharpenKernelSize
-                };
-                processor.AddNode(sharpenNode);
-                hasNodes = true;
+                });
             }
-            
-            // Channel Mixer (Advanced)
+
             if (showChannelMixer)
             {
-                var cmNode = new ChannelMixerNode
+                processor.AddNode(new ChannelMixerNode
                 {
                     outRed = cmOutRed,
                     outGreen = cmOutGreen,
                     outBlue = cmOutBlue,
                     outAlpha = cmOutAlpha
-                };
-                processor.AddNode(cmNode);
-                hasNodes = true;
+                });
             }
-            
-            // Levels (Advanced)
+
             if (showLevels)
             {
-                var lvlNode = new LevelsNode
+                processor.AddNode(new LevelsNode
                 {
                     minInput = lvlMinInput,
                     maxInput = lvlMaxInput,
                     minOutput = lvlMinOutput,
                     maxOutput = lvlMaxOutput,
                     midGamma = lvlMidGamma
-                };
-                processor.AddNode(lvlNode);
-                hasNodes = true;
+                });
             }
-            
-            // プレビューを生成（Texture2Dとしてコピー）
-            // パフォーマンスのため512x512に制限
-            try
-            {
-                Texture2D linearResult;
-                
-                // ノード有無に関係なく処理パイプラインを通してLinear色空間の結果を取得
-                linearResult = processor.GetResultAsTexture2D(PREVIEW_RESOLUTION);
-                
-                if (linearResult != null)
-                {
-                    // GUI表示用にLinear→sRGB変換
-                    resultPreview = TextureProcessor.ConvertLinearToSRGB(linearResult);
-                    DestroyImmediate(linearResult); // Linear版は破棄
-                    
-                    Debug.Log($"プレビュー生成成功: {resultPreview.width}x{resultPreview.height}, format={resultPreview.format}, hasNodes={hasNodes}");
-                }
-                else
-                {
-                    Debug.LogWarning("プレビュー生成結果がnullです");
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"プレビュー生成エラー: {e.Message}\n{e.StackTrace}");
-            }
-            
-            // UIを再描画
-            Repaint();
         }
-        
+
+        // ─── 保存処理 ────────────────────────────────────────────────────
+
         private void ApplyAndSave()
         {
             if (sourceTexture == null)
@@ -212,100 +188,12 @@ namespace UniTexEditor
                 SetStatus("Error: Source Texture is not set.", StatusType.Error);
                 return;
             }
-            
-            // 保存時はフル解像度で処理
+
+            // フル解像度で処理（Linear 色空間で取得）
             Texture2D fullResResult = null;
             try
             {
-                // ノードを再構築（UpdatePreviewと同じロジック）
-                processor.ClearNodes();
-                processor.MaskTexture = maskTexture;
-                processor.InvertMask = invertMask;
-                processor.MaskStrength = maskStrength;
-                
-                if (showColorCorrection && (hueShift != 0 || saturation != 1f || brightness != 1f || gamma != 1f || ccBlendOpacity > 0f))
-                {
-                    var colorNode = new ColorCorrectionNode
-                    {
-                        hueShift = hueShift,
-                        saturation = saturation,
-                        brightness = brightness,
-                        gamma = gamma,
-                        targetColor = ccTargetColor,
-                        blendMode = ccBlendMode,
-                        blendOpacity = ccBlendOpacity
-                    };
-                    processor.AddNode(colorNode);
-                }
-                
-                if (showBlend && blendTexture != null)
-                {
-                    var blendNode = new BlendNode
-                    {
-                        blendTexture = blendTexture,
-                        blendMaskTexture = blendMaskTexture,
-                        blendMode = blendMode,
-                        blendStrength = blendStrength,
-                        tiling = blendTiling,
-                        scale = blendScale,
-                        offset = blendOffset
-                    };
-                    processor.AddNode(blendNode);
-                }
-                
-                if (showToneCurve && (useRGBCurve || useRedCurve || useGreenCurve || useBlueCurve))
-                {
-                    var toneCurveNode = new ToneCurveNode
-                    {
-                        rgbCurve = rgbCurve,
-                        redCurve = redCurve,
-                        greenCurve = greenCurve,
-                        blueCurve = blueCurve,
-                        useRGBCurve = useRGBCurve,
-                        useRedCurve = useRedCurve,
-                        useGreenCurve = useGreenCurve,
-                        useBlueCurve = useBlueCurve
-                    };
-                    processor.AddNode(toneCurveNode);
-                }
-
-                if (showSharpen)
-                {
-                    var sharpenNode = new SharpenNode
-                    {
-                        mode = sharpenMode,
-                        strength = sharpenStrength,
-                        kernelSize = sharpenKernelSize
-                    };
-                    processor.AddNode(sharpenNode);
-                }
-                
-                if (showChannelMixer)
-                {
-                    var cmNode = new ChannelMixerNode
-                    {
-                        outRed = cmOutRed,
-                        outGreen = cmOutGreen,
-                        outBlue = cmOutBlue,
-                        outAlpha = cmOutAlpha
-                    };
-                    processor.AddNode(cmNode);
-                }
-                
-                if (showLevels)
-                {
-                    var lvlNode = new LevelsNode
-                    {
-                        minInput = lvlMinInput,
-                        maxInput = lvlMaxInput,
-                        minOutput = lvlMinOutput,
-                        maxOutput = lvlMaxOutput,
-                        midGamma = lvlMidGamma
-                    };
-                    processor.AddNode(lvlNode);
-                }
-                
-                // フル解像度で処理（Linear色空間で取得）
+                ConfigureProcessor();
                 fullResResult = processor.GetResultAsTexture2D();
             }
             catch (System.Exception e)
@@ -314,64 +202,67 @@ namespace UniTexEditor
                 EditorUtility.DisplayDialog("エラー", "テクスチャ処理に失敗しました。", "OK");
                 return;
             }
-            
+
             if (fullResResult == null)
             {
                 EditorUtility.DisplayDialog("エラー", "テクスチャの生成に失敗しました。", "OK");
                 return;
             }
-            
-            // 色空間変換 (Always sRGB for saving to file to match viewer expectation)
+
+            // Linear → sRGB 変換して PNG エンコード
             Texture2D textureToSave = TextureProcessor.ConvertLinearToSRGB(fullResResult);
-            DestroyImmediate(fullResResult); // Linear版は破棄
-            Debug.Log("保存用にLinear→sRGB変換を実行しました");
-            
-            // 保存処理
+            DestroyImmediate(fullResResult);
+
             byte[] bytes = textureToSave.EncodeToPNG();
-            
-            string savePath;
-            if (overwriteSource)
-            {
-                savePath = AssetDatabase.GetAssetPath(sourceTexture);
-            }
-            else
-            {
-                // カスタムパスが指定されていればそれを使用、なければデフォルトパス
-                savePath = string.IsNullOrEmpty(customOutputPath) ? outputPath : customOutputPath;
-                
-                if (string.IsNullOrEmpty(savePath))
-                {
-                    string timestamp = System.DateTime.Now.ToString("yyMMdd_HHmmss");
-                    string defaultName = sourceTexture != null ? Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(sourceTexture)) + $"_edited_{timestamp}" : $"EditedTexture_{timestamp}";
-                    savePath = EditorUtility.SaveFilePanelInProject("保存先を選択", defaultName, "png", "保存先を選択してください");
-                }
-            }
-            
-            if (string.IsNullOrEmpty(savePath))
-            {
-                DestroyImmediate(textureToSave);
-                return;
-            }
-            
+            DestroyImmediate(textureToSave); // エンコード後は不要なので即解放
+
+            // 保存先パスを決定
+            string savePath = ResolveSavePath();
+            if (string.IsNullOrEmpty(savePath)) return;
+
             File.WriteAllBytes(savePath, bytes);
             AssetDatabase.Refresh();
-            
-            AssetDatabase.Refresh();
-            
+
             SetStatus($"Success: Saved to {savePath}", StatusType.Success);
         }
-        
+
+        /// <summary>
+        /// 保存先パスを決定する。
+        /// overwriteSource → ソースパスを上書き
+        /// customOutputPath → ユーザー指定パス
+        /// それ以外 → ソースと同フォルダにタイムスタンプ付きで自動生成
+        /// </summary>
+        private string ResolveSavePath()
+        {
+            if (overwriteSource)
+                return AssetDatabase.GetAssetPath(sourceTexture);
+
+            if (!string.IsNullOrEmpty(customOutputPath))
+                return customOutputPath;
+
+            // 自動生成：保存実行時のタイムスタンプを使用して常に新鮮なファイル名にする
+            string srcPath = AssetDatabase.GetAssetPath(sourceTexture);
+            string dir = string.IsNullOrEmpty(srcPath) ? "Assets" : Path.GetDirectoryName(srcPath);
+            string baseName = string.IsNullOrEmpty(srcPath)
+                ? "EditedTexture"
+                : Path.GetFileNameWithoutExtension(srcPath);
+            string timestamp = System.DateTime.Now.ToString("yyMMdd_HHmmss");
+            return Path.Combine(dir, $"{baseName}_edited_{timestamp}.png").Replace("\\", "/");
+        }
+
+        // ─── リセット ───────────────────────────────────────────────────
+
         private void ResetParameters()
         {
-            // パラメータのリセット
             hueShift = 0f;
             saturation = 1f;
             brightness = 1f;
-            
+            gamma = 1f;         // 以前欠落していた gamma のリセットを追加
+
             ccTargetColor = Color.white;
             ccBlendMode = BlendMode.Normal;
             ccBlendOpacity = 0f;
-            
+
             blendTexture = null;
             blendMaskTexture = null;
             blendMode = BlendMode.Normal;
@@ -379,78 +270,82 @@ namespace UniTexEditor
             blendTiling = true;
             blendScale = Vector2.one;
             blendOffset = Vector2.zero;
-            
+
             sharpenMode = SharpenMode.Sharpen;
             sharpenStrength = 1f;
             sharpenKernelSize = 5;
-            
-            // トーンカーブをリセット
+
             rgbCurve = AnimationCurve.Linear(0, 0, 1, 1);
             redCurve = AnimationCurve.Linear(0, 0, 1, 1);
             greenCurve = AnimationCurve.Linear(0, 0, 1, 1);
             blueCurve = AnimationCurve.Linear(0, 0, 1, 1);
-            
-            // Advanced Reset
+            useRGBCurve = true;
+            useRedCurve = false;
+            useGreenCurve = false;
+            useBlueCurve = false;
+
             lvlMinInput = 0f;
             lvlMaxInput = 1f;
             lvlMinOutput = 0f;
             lvlMaxOutput = 1f;
             lvlMidGamma = 1f;
-            
+
             cmOutRed = ChannelSource.Red;
             cmOutGreen = ChannelSource.Green;
             cmOutBlue = ChannelSource.Blue;
             cmOutAlpha = ChannelSource.Alpha;
-            
+
             SetStatus("Parameters have been reset.", StatusType.Info);
-            
             RequestPreviewUpdate();
         }
-        
+
+        // ─── ステータス ─────────────────────────────────────────────────
+
         /// <summary>
-        /// ステータスバーの表示を設定
+        /// ステータスバーの表示を設定する。
+        /// Info 以外のタイプは 5 秒後に自動的に Info へ戻る。
         /// </summary>
         private void SetStatus(string message, StatusType type)
         {
             statusMessage = message;
             statusType = type;
-            // Repaint() は呼び出し元で必要な場合に行うか、Unityのイベントサイクルに任せる
+            _statusResetTime = (type != StatusType.Info)
+                ? EditorApplication.timeSinceStartup + 5.0
+                : -1.0;
+            Repaint();
         }
-        
+
+        // ─── マスク反転保存 ──────────────────────────────────────────────
 
         /// <summary>
-        /// マスク画像を反転して保存
+        /// マスク画像を反転して保存する
         /// </summary>
         private void SaveInvertedMask()
         {
             if (maskTexture == null)
             {
-                // Localization key 'error_no_mask' might not exist, using hardcoded fallback or need to add it.
-                // Checking ja.json, "error_no_mask" is not there. I should add it or use a string.
-                // Using hardcoded for now or just generic error. "Mask Texture is not set."
                 EditorUtility.DisplayDialog("Error", "Mask Texture is not set.", "OK");
                 return;
             }
 
             string defaultName = maskTexture.name + "_inverted";
             string path = EditorUtility.SaveFilePanel("Save Inverted Mask", "Assets", defaultName, "png");
-
             if (string.IsNullOrEmpty(path)) return;
 
-            // マスク処理用の一時RenderTextureを作成
-            RenderTexture rt = RenderTexture.GetTemporary(maskTexture.width, maskTexture.height, 0, RenderTextureFormat.RFloat);
+            // new RenderTexture を使用して enableRandomWrite を Create() 前に設定する
+            // （GetTemporary は既に作成済みのため enableRandomWrite を後から変更できない）
+            var rt = new RenderTexture(maskTexture.width, maskTexture.height, 0, RenderTextureFormat.RFloat);
             rt.enableRandomWrite = true;
             rt.Create();
 
-            // ComputeShaderで反転処理
             var maskShader = Resources.Load<ComputeShader>("MaskProcess");
             if (maskShader != null)
             {
                 int kernel = maskShader.FindKernel("CSMain");
                 maskShader.SetTexture(kernel, "Source", maskTexture);
                 maskShader.SetTexture(kernel, "Result", rt);
-                maskShader.SetInt("Invert", 1); // 強制反転
-                maskShader.SetFloat("Strength", 1.0f); // 強度100%
+                maskShader.SetInt("Invert", 1);
+                maskShader.SetFloat("Strength", 1.0f);
 
                 int tx = Mathf.CeilToInt(maskTexture.width / 8.0f);
                 int ty = Mathf.CeilToInt(maskTexture.height / 8.0f);
@@ -461,58 +356,15 @@ namespace UniTexEditor
                 Debug.LogWarning("MaskProcess compute shader not found.");
             }
 
-            // Texture2Dに変換
             Texture2D result = TextureProcessor.RenderTextureToTexture2D(rt);
-            RenderTexture.ReleaseTemporary(rt);
+            rt.Release();
 
-            // 保存
             byte[] bytes = result.EncodeToPNG();
-            File.WriteAllBytes(path, bytes);
             DestroyImmediate(result);
 
+            File.WriteAllBytes(path, bytes);
             AssetDatabase.Refresh();
             SetStatus(Localization.GetText("msg_save_inverted_success") + Path.GetFileName(path), StatusType.Success);
-        }
-
-        /// <summary>
-        /// デフォルト出力パスを更新（ソーステクスチャと同じフォルダ）
-        /// </summary>
-        private void UpdateDefaultOutputPath()
-        {
-            if (sourceTexture == null)
-            {
-                outputPath = "";
-                return;
-            }
-            
-            string sourcePath = AssetDatabase.GetAssetPath(sourceTexture);
-            if (string.IsNullOrEmpty(sourcePath))
-            {
-                outputPath = "Assets/";
-                return;
-            }
-            
-            // ソースファイルと同じディレクトリ、ファイル名に "_edited_yyMMdd_HHmmss" を追加
-            string directory = Path.GetDirectoryName(sourcePath);
-            string fileNameWithoutExt = Path.GetFileNameWithoutExtension(sourcePath);
-            string extension = Path.GetExtension(sourcePath);
-            
-            // 拡張子がない、またはpng以外の場合はpngを使用
-            if (string.IsNullOrEmpty(extension) || extension.ToLower() != ".png")
-            {
-                extension = ".png";
-            }
-            
-            // タイムスタンプを付与
-            string timestamp = System.DateTime.Now.ToString("yyMMdd_HHmmss");
-            string newFileName = $"{fileNameWithoutExt}_edited_{timestamp}{extension}";
-            
-            outputPath = Path.Combine(directory, newFileName);
-            
-            // Windowsパス区切りをUnity形式に変換
-            outputPath = outputPath.Replace("\\", "/");
-            
-            Debug.Log($"デフォルト出力パス設定: {outputPath}");
         }
     }
 }

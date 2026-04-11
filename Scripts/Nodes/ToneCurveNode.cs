@@ -13,31 +13,45 @@ namespace UniTexEditor
         public AnimationCurve redCurve = AnimationCurve.Linear(0, 0, 1, 1);
         public AnimationCurve greenCurve = AnimationCurve.Linear(0, 0, 1, 1);
         public AnimationCurve blueCurve = AnimationCurve.Linear(0, 0, 1, 1);
-        
+
         public bool useRGBCurve = true;
         public bool useRedCurve = false;
         public bool useGreenCurve = false;
         public bool useBlueCurve = false;
-        
+
         private ComputeShader toneCurveShader;
         private RenderTexture tempRT;
-        
+
         private ComputeBuffer rgbBuffer;
         private ComputeBuffer redBuffer;
         private ComputeBuffer greenBuffer;
         private ComputeBuffer blueBuffer;
-        
+
         private const int CURVE_RESOLUTION = 256;
-        
+
+        // Process 呼び出しごとの配列アロケートを避けるための再利用バッファ
+        private readonly float[] _lutWorkBuffer = new float[CURVE_RESOLUTION];
+
+        // 恒等変換 LUT（[0, 1/255, 2/255, ..., 1]）をキャッシュ
+        private static float[] s_identityLUT;
+
+        private static float[] GetIdentityLUT()
+        {
+            if (s_identityLUT != null) return s_identityLUT;
+
+            s_identityLUT = new float[CURVE_RESOLUTION];
+            for (int i = 0; i < CURVE_RESOLUTION; i++)
+                s_identityLUT[i] = i / (float)(CURVE_RESOLUTION - 1);
+            return s_identityLUT;
+        }
+
         public ToneCurveNode()
         {
             nodeName = "ToneCurve";
         }
-        
-        public override RenderTexture Process(RenderTexture source, RenderTexture mask = null)
+
+        protected override RenderTexture ProcessInternal(RenderTexture source, RenderTexture mask = null)
         {
-            if (!enabled) return source;
-            
             if (toneCurveShader == null)
             {
                 toneCurveShader = Resources.Load<ComputeShader>("ToneCurve");
@@ -47,118 +61,69 @@ namespace UniTexEditor
                     return source;
                 }
             }
-            
-            // 一時的なRenderTextureを作成
-            if (tempRT != null && (tempRT.width != source.width || tempRT.height != source.height))
-            {
-                tempRT.Release();
-                tempRT = null;
-            }
-            
-            if (tempRT == null)
-            {
-                tempRT = new RenderTexture(source.width, source.height, 0, RenderTextureFormat.ARGBFloat);
-                tempRT.enableRandomWrite = true;
-                tempRT.Create();
-            }
-            
-            // すべてのカーブバッファを初期化・更新（使用しないものもデフォルト値で埋める）
-            UpdateCurveBuffer(ref rgbBuffer, useRGBCurve ? rgbCurve : AnimationCurve.Linear(0, 0, 1, 1));
-            UpdateCurveBuffer(ref redBuffer, useRedCurve ? redCurve : AnimationCurve.Linear(0, 0, 1, 1));
-            UpdateCurveBuffer(ref greenBuffer, useGreenCurve ? greenCurve : AnimationCurve.Linear(0, 0, 1, 1));
-            UpdateCurveBuffer(ref blueBuffer, useBlueCurve ? blueCurve : AnimationCurve.Linear(0, 0, 1, 1));
-            
+
+            EnsureRenderTexture(ref tempRT, source.width, source.height);
+
+            // 有効なカーブはサンプリング、無効なカーブは恒等 LUT をセット
+            UpdateCurveBuffer(ref rgbBuffer, rgbCurve, useRGBCurve);
+            UpdateCurveBuffer(ref redBuffer, redCurve, useRedCurve);
+            UpdateCurveBuffer(ref greenBuffer, greenCurve, useGreenCurve);
+            UpdateCurveBuffer(ref blueBuffer, blueCurve, useBlueCurve);
+
             int kernelIndex = toneCurveShader.FindKernel("CSMain");
-            
-            // パラメータをセット
+
             toneCurveShader.SetTexture(kernelIndex, "Source", source);
             toneCurveShader.SetTexture(kernelIndex, "Result", tempRT);
-            
-            if (mask != null)
-            {
-                toneCurveShader.SetTexture(kernelIndex, "Mask", mask);
-                toneCurveShader.SetInt("UseMask", 1);
-            }
-            else
-            {
-                // マスクがない場合はダミーテクスチャを設定
-                RenderTexture dummyMask = RenderTexture.GetTemporary(1, 1, 0, RenderTextureFormat.RFloat);
-                toneCurveShader.SetTexture(kernelIndex, "Mask", dummyMask);
-                toneCurveShader.SetInt("UseMask", 0);
-                RenderTexture.ReleaseTemporary(dummyMask);
-            }
-            
-            // カーブバッファをセット（常にすべて設定）
+            SetMaskParameter(toneCurveShader, kernelIndex, mask);
+
             toneCurveShader.SetInt("UseRGBCurve", useRGBCurve ? 1 : 0);
             toneCurveShader.SetInt("UseRedCurve", useRedCurve ? 1 : 0);
             toneCurveShader.SetInt("UseGreenCurve", useGreenCurve ? 1 : 0);
             toneCurveShader.SetInt("UseBlueCurve", useBlueCurve ? 1 : 0);
-            
+
             toneCurveShader.SetBuffer(kernelIndex, "RGBCurve", rgbBuffer);
             toneCurveShader.SetBuffer(kernelIndex, "RedCurve", redBuffer);
             toneCurveShader.SetBuffer(kernelIndex, "GreenCurve", greenBuffer);
             toneCurveShader.SetBuffer(kernelIndex, "BlueCurve", blueBuffer);
-            
-            // ディスパッチ
+
             int threadGroupsX = Mathf.CeilToInt(source.width / 8.0f);
             int threadGroupsY = Mathf.CeilToInt(source.height / 8.0f);
             toneCurveShader.Dispatch(kernelIndex, threadGroupsX, threadGroupsY, 1);
-            
+
             return tempRT;
         }
-        
+
         /// <summary>
-        /// AnimationCurveをComputeBufferに変換
+        /// AnimationCurve を ComputeBuffer に変換する。
+        /// useIt が false の場合は恒等 LUT をアップロードして AnimationCurve のサンプリングを省く。
         /// </summary>
-        private void UpdateCurveBuffer(ref ComputeBuffer buffer, AnimationCurve curve)
+        private void UpdateCurveBuffer(ref ComputeBuffer buffer, AnimationCurve curve, bool useIt)
         {
             if (buffer == null || buffer.count != CURVE_RESOLUTION)
             {
-                if (buffer != null) buffer.Release();
+                buffer?.Release();
                 buffer = new ComputeBuffer(CURVE_RESOLUTION, sizeof(float));
             }
-            
-            float[] lookupTable = new float[CURVE_RESOLUTION];
-            for (int i = 0; i < CURVE_RESOLUTION; i++)
+
+            if (!useIt)
             {
-                float t = i / (float)(CURVE_RESOLUTION - 1);
-                lookupTable[i] = Mathf.Clamp01(curve.Evaluate(t));
+                buffer.SetData(GetIdentityLUT());
+                return;
             }
-            
-            buffer.SetData(lookupTable);
+
+            for (int i = 0; i < CURVE_RESOLUTION; i++)
+                _lutWorkBuffer[i] = Mathf.Clamp01(curve.Evaluate(i / (float)(CURVE_RESOLUTION - 1)));
+
+            buffer.SetData(_lutWorkBuffer);
         }
-        
+
         public override void Cleanup()
         {
-            if (tempRT != null)
-            {
-                tempRT.Release();
-                tempRT = null;
-            }
-            
-            if (rgbBuffer != null)
-            {
-                rgbBuffer.Release();
-                rgbBuffer = null;
-            }
-            
-            if (redBuffer != null)
-            {
-                redBuffer.Release();
-                redBuffer = null;
-            }
-            
-            if (greenBuffer != null)
-            {
-                greenBuffer.Release();
-                greenBuffer = null;
-            }
-            
-            if (blueBuffer != null)
-            {
-                blueBuffer.Release();
-                blueBuffer = null;
-            }
+            if (tempRT != null) { tempRT.Release(); tempRT = null; }
+            rgbBuffer?.Release();   rgbBuffer   = null;
+            redBuffer?.Release();   redBuffer   = null;
+            greenBuffer?.Release(); greenBuffer = null;
+            blueBuffer?.Release();  blueBuffer  = null;
         }
     }
 }

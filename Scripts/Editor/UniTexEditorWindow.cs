@@ -11,10 +11,8 @@ namespace UniTexEditor
         private TextureProcessor processor;
         private Texture2D sourceTexture;
         private Texture2D maskTexture;
-        private Mesh sourceMesh;
-        private GameObject sourceGameObject; // SkinnedMeshRenderer対応
         private Texture2D resultPreview;
-        
+
         // 色調補正パラメータ
         private bool showColorCorrection = true;
         private float hueShift = 0f;
@@ -24,7 +22,7 @@ namespace UniTexEditor
         private Color ccTargetColor = Color.white;
         private BlendMode ccBlendMode = BlendMode.Normal;
         private float ccBlendOpacity = 0f;
-        
+
         // ブレンドパラメータ
         private bool showBlend = false;
         private Texture2D blendTexture;
@@ -34,10 +32,7 @@ namespace UniTexEditor
         private bool blendTiling = true;
         private Vector2 blendScale = Vector2.one;
         private Vector2 blendOffset = Vector2.zero;
-        
-        // Advanced Options
-        private bool showAdvanced = false;
-        
+
         // Levels
         private bool showLevels = false;
         private float lvlMinInput = 0f;
@@ -45,20 +40,20 @@ namespace UniTexEditor
         private float lvlMinOutput = 0f;
         private float lvlMaxOutput = 1f;
         private float lvlMidGamma = 1f;
-        
+
         // Channel Mixer
         private bool showChannelMixer = false;
         private ChannelSource cmOutRed = ChannelSource.Red;
         private ChannelSource cmOutGreen = ChannelSource.Green;
         private ChannelSource cmOutBlue = ChannelSource.Blue;
         private ChannelSource cmOutAlpha = ChannelSource.Alpha;
-        
+
         // シャープネス/ぼかしパラメータ
         private bool showSharpen = false;
         private SharpenMode sharpenMode = SharpenMode.Sharpen;
         private float sharpenStrength = 1f;
         private int sharpenKernelSize = 5;
-        
+
         // トーンカーブパラメータ
         private bool showToneCurve = false;
         private AnimationCurve rgbCurve = AnimationCurve.Linear(0, 0, 1, 1);
@@ -69,69 +64,69 @@ namespace UniTexEditor
         private bool useRedCurve = false;
         private bool useGreenCurve = false;
         private bool useBlueCurve = false;
-        
-        // マスクオプション（常時ON）
+
+        // マスクオプション
         private bool invertMask = false;
         private float maskStrength = 1f;
-        
+
         // 出力設定
         private bool overwriteSource = false;
-        private string outputPath = "";
-        private string customOutputPath = ""; // ユーザーが明示的に指定したパス
-        // convertToSRGBOnSave removed (always true behavior)
-        
+        private string customOutputPath = "";
+
         // プレビュー
         private bool autoPreview = true;
         private Vector2 scrollPosition;
-        private Vector2 previewScrollPosition;
-        private const float PREVIEW_MAX_SIZE = 512f; // プレビュー最大サイズ
-        private const int PREVIEW_RESOLUTION = 512; // プレビュー計算解像度
+        private const float PREVIEW_MAX_SIZE = 512f;
+        private const int PREVIEW_RESOLUTION = 512;
         private bool previewDirty;
         private bool previewUpdateScheduled;
-        
+
+        // チェッカーボードテクスチャ（OnEnable で生成、OnDisable で破棄）
+        private Texture2D checkerboardTexture;
+
         // ステータスバー
-        public enum StatusType
-        {
-            None,
-            Info,
-            Success,
-            Error
-        }
+        public enum StatusType { None, Info, Success, Error }
         private string statusMessage = "Ready";
         private StatusType statusType = StatusType.Info;
-        
+        // Info 以外のステータスを自動リセットする時刻（EditorApplication.timeSinceStartup）
+        // 負値の場合はリセット無効
+        private double _statusResetTime = -1.0;
+
         [MenuItem("Tools/UniTex Editor")]
         public static void ShowWindow()
         {
             var window = GetWindow<UniTexEditorWindow>("UniTex Editor");
             window.minSize = new Vector2(400, 600);
         }
-        
+
         private void OnEnable()
         {
-            // 初期化
             Localization.Initialize();
-            
+
             if (processor == null)
-            {
                 processor = new TextureProcessor();
-            }
+
             if (resultPreview != null)
             {
                 DestroyImmediate(resultPreview);
                 resultPreview = null;
             }
         }
-        
+
         private void OnDisable()
         {
             processor?.Cleanup();
-            
-            // プレビューテクスチャもクリーンアップ
+
             if (resultPreview != null)
             {
                 DestroyImmediate(resultPreview);
                 resultPreview = null;
+            }
+
+            if (checkerboardTexture != null)
+            {
+                DestroyImmediate(checkerboardTexture);
+                checkerboardTexture = null;
             }
 
             EditorApplication.delayCall -= ProcessPendingPreview;

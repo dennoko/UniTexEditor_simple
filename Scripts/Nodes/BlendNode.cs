@@ -14,7 +14,7 @@ namespace UniTexEditor
         Screen = 3,
         Overlay = 4
     }
-    
+
     /// <summary>
     /// テクスチャ合成ノード
     /// </summary>
@@ -24,24 +24,24 @@ namespace UniTexEditor
         public Texture2D blendTexture;
         public Texture2D blendMaskTexture;
         public BlendMode blendMode = BlendMode.Normal;
-        public float blendStrength = 1f;  // HDR合成用
-        
+        public float blendStrength = 1f;
+
         public bool tiling = true;
         public Vector2 scale = Vector2.one;
         public Vector2 offset = Vector2.zero;
-        
+
         private ComputeShader blendShader;
         private RenderTexture tempRT;
-        
+
         public BlendNode()
         {
             nodeName = "Blend";
         }
-        
-        public override RenderTexture Process(RenderTexture source, RenderTexture mask = null)
+
+        protected override RenderTexture ProcessInternal(RenderTexture source, RenderTexture mask = null)
         {
-            if (!enabled || blendTexture == null) return source;
-            
+            if (blendTexture == null) return source;
+
             if (blendShader == null)
             {
                 blendShader = Resources.Load<ComputeShader>("Blend");
@@ -51,60 +51,32 @@ namespace UniTexEditor
                     return source;
                 }
             }
-            
-            // 一時的なRenderTextureを作成
-            if (tempRT != null && (tempRT.width != source.width || tempRT.height != source.height))
-            {
-                tempRT.Release();
-                tempRT = null;
-            }
-            
-            if (tempRT == null)
-            {
-                tempRT = new RenderTexture(source.width, source.height, 0, RenderTextureFormat.ARGBFloat);
-                tempRT.enableRandomWrite = true;
-                tempRT.Create();
-            }
-            
+
+            EnsureRenderTexture(ref tempRT, source.width, source.height);
+
             int kernelIndex = blendShader.FindKernel("CSMain");
-            
-            // パラメータをセット
+
             blendShader.SetTexture(kernelIndex, "Source", source);
             blendShader.SetTexture(kernelIndex, "BlendTexture", blendTexture);
             blendShader.SetTexture(kernelIndex, "Result", tempRT);
             blendShader.SetTexture(kernelIndex, "BlendMask", blendMaskTexture != null ? blendMaskTexture : Texture2D.whiteTexture);
             blendShader.SetInt("UseBlendMask", blendMaskTexture != null ? 1 : 0);
-            
-            if (mask != null)
-            {
-                blendShader.SetTexture(kernelIndex, "Mask", mask);
-                blendShader.SetInt("UseMask", 1);
-            }
-            else
-            {
-                // マスクがない場合はダミーテクスチャを設定
-                RenderTexture dummyMask = RenderTexture.GetTemporary(1, 1, 0, RenderTextureFormat.RFloat);
-                blendShader.SetTexture(kernelIndex, "Mask", dummyMask);
-                blendShader.SetInt("UseMask", 0);
-                RenderTexture.ReleaseTemporary(dummyMask);
-            }
-            
+            SetMaskParameter(blendShader, kernelIndex, mask);
+
             blendShader.SetInt("BlendMode", (int)blendMode);
             blendShader.SetFloat("BlendStrength", blendStrength);
-            
-            // Transform Properties
+
             blendShader.SetInt("Tiling", tiling ? 1 : 0);
-            // Vector2をfloat arrayや個別のfloatとして渡す
             blendShader.SetFloats("Scale", scale.x, scale.y);
             blendShader.SetFloats("Offset", offset.x, offset.y);
-            
+
             int threadGroupsX = Mathf.CeilToInt(source.width / 8.0f);
             int threadGroupsY = Mathf.CeilToInt(source.height / 8.0f);
             blendShader.Dispatch(kernelIndex, threadGroupsX, threadGroupsY, 1);
-            
+
             return tempRT;
         }
-        
+
         public override void Cleanup()
         {
             if (tempRT != null)
