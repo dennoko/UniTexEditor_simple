@@ -6,46 +6,30 @@ namespace UniTexEditor
 {
     public partial class UniTexEditorWindow
     {
-        private GUIStyle boxStyle;
-        private GUIStyle titleStyle;
+        // Addons (CVG など) から直接参照されるため field として保持する。
+        // UniTexTheme.ActionButtonStyle の参照をキャッシュする。
         private GUIStyle actionButtonStyle;
 
         private void InitializeStyles()
         {
-            if (boxStyle == null)
-            {
-                boxStyle = new GUIStyle(EditorStyles.helpBox);
-                boxStyle.padding = new RectOffset(10, 10, 10, 10);
-                boxStyle.margin = new RectOffset(0, 0, 5, 5);
-            }
-
-            if (titleStyle == null)
-            {
-                titleStyle = new GUIStyle(EditorStyles.boldLabel);
-                titleStyle.fontSize = 12;
-                titleStyle.margin = new RectOffset(0, 0, 0, 5);
-            }
-
-            if (actionButtonStyle == null)
-            {
-                actionButtonStyle = new GUIStyle(EditorStyles.miniButton);
-                actionButtonStyle.fontSize = 12;
-                actionButtonStyle.fixedHeight = 30;
-                actionButtonStyle.fontStyle = FontStyle.Bold;
-            }
+            UniTexTheme.Initialize();
+            actionButtonStyle = UniTexTheme.ActionButtonStyle;
         }
 
         private void OnGUI()
         {
-            // ステータスの自動リセット（Info 以外を一定時間後に戻す）
+            // Info 以外のステータスを一定時間後に自動リセットする
             if (_statusResetTime > 0 && EditorApplication.timeSinceStartup > _statusResetTime)
             {
-                statusMessage = "Ready";
-                statusType = StatusType.Info;
+                statusMessage    = "Ready";
+                statusType       = StatusType.Info;
                 _statusResetTime = -1.0;
             }
 
             InitializeStyles();
+
+            // ── ウィンドウ背景 (surface.level0) ──────────────────────────────
+            EditorGUI.DrawRect(new Rect(0, 0, position.width, position.height), UniTexTheme.Surface0);
 
             DrawHeader();
             DrawPreviewArea();
@@ -62,32 +46,45 @@ namespace UniTexEditor
 
         private void DrawHeader()
         {
-            EditorGUILayout.Space(5);
+            EditorGUILayout.Space(6);
 
-            // タイトルと言語ボタンを同一行に配置
             GUILayout.BeginHorizontal();
-            GUILayout.Label(Localization.GetText("header_title"), EditorStyles.boldLabel);
+            GUILayout.Space(6);
+            GUILayout.Label(Localization.GetText("header_title"), UniTexTheme.TitleStyle);
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("JA", EditorStyles.miniButtonLeft, GUILayout.Width(30)))
+
+            if (GUILayout.Button("JA", UniTexTheme.MiniButtonLeftStyle,  GUILayout.Width(30)))
                 Localization.CurrentLanguage = "ja";
-            if (GUILayout.Button("EN", EditorStyles.miniButtonRight, GUILayout.Width(30)))
+            if (GUILayout.Button("EN", UniTexTheme.MiniButtonRightStyle, GUILayout.Width(30)))
                 Localization.CurrentLanguage = "en";
+            GUILayout.Space(6);
             GUILayout.EndHorizontal();
 
-            EditorGUILayout.Space(5);
+            EditorGUILayout.Space(6);
+
+            // 全幅セパレーター
+            var lineRect = GUILayoutUtility.GetRect(0, 1, GUILayout.ExpandWidth(true));
+            EditorGUI.DrawRect(lineRect, UniTexTheme.Outline);
+
+            EditorGUILayout.Space(4);
         }
 
         // ─── プレビューエリア ──────────────────────────────────────────────
 
         private void DrawPreviewArea()
         {
-            GUILayout.BeginVertical(EditorStyles.helpBox);
+            // 外枠: padding=0 にすることでツールバーをカード端まで伸ばす
+            GUILayout.BeginVertical(UniTexTheme.CardOuterStyle);
 
-            GUILayout.BeginHorizontal(EditorStyles.toolbar);
-            GUILayout.Label("Preview", EditorStyles.miniLabel);
+            // ツールバー行 (surface.level2 背景)
+            GUILayout.BeginHorizontal(UniTexTheme.ToolbarStyle);
+            GUILayout.Label("PREVIEW", UniTexTheme.SectionHeaderStyle);
             GUILayout.FlexibleSpace();
 
-            bool newAutoPreview = GUILayout.Toggle(autoPreview, Localization.GetContent("preview_auto_update"), EditorStyles.toolbarButton);
+            bool newAutoPreview = GUILayout.Toggle(
+                autoPreview,
+                Localization.GetContent("preview_auto_update"),
+                EditorStyles.toolbarButton);
             if (newAutoPreview != autoPreview)
             {
                 autoPreview = newAutoPreview;
@@ -99,8 +96,10 @@ namespace UniTexEditor
 
             GUILayout.EndHorizontal();
 
+            // プレビュー本体 (4px 内側パディング)
             float previewHeight = Mathf.Min(position.height * 0.4f, 400f);
-            Rect previewRect = GUILayoutUtility.GetRect(0, previewHeight, GUILayout.ExpandWidth(true));
+            Rect container = GUILayoutUtility.GetRect(0, previewHeight + 8, GUILayout.ExpandWidth(true));
+            Rect previewRect = new Rect(container.x + 4, container.y + 4, container.width - 8, previewHeight);
 
             if (resultPreview != null)
             {
@@ -108,34 +107,36 @@ namespace UniTexEditor
                     DrawCheckerboard(previewRect);
 
                 float textureAspect = (float)resultPreview.width / resultPreview.height;
-                float rectAspect = previewRect.width / previewRect.height;
+                float rectAspect    = previewRect.width / previewRect.height;
+                Rect drawRect       = previewRect;
 
-                Rect drawRect = previewRect;
                 if (textureAspect > rectAspect)
                 {
                     float h = previewRect.width / textureAspect;
-                    drawRect.y += (previewRect.height - h) * 0.5f;
-                    drawRect.height = h;
+                    drawRect.y      += (previewRect.height - h) * 0.5f;
+                    drawRect.height  = h;
                 }
                 else
                 {
                     float w = previewRect.height * textureAspect;
-                    drawRect.x += (previewRect.width - w) * 0.5f;
-                    drawRect.width = w;
+                    drawRect.x     += (previewRect.width - w) * 0.5f;
+                    drawRect.width  = w;
                 }
 
                 GUI.DrawTexture(drawRect, resultPreview, ScaleMode.ScaleToFit, true);
 
                 GUI.Label(
-                    new Rect(previewRect.x + 5, previewRect.y + previewHeight - 20, 200, 20),
+                    new Rect(previewRect.x + 5, previewRect.y + previewHeight - 16, 200, 16),
                     $"{resultPreview.width}x{resultPreview.height} ({resultPreview.format})",
-                    EditorStyles.miniLabel);
+                    UniTexTheme.CaptionStyle);
             }
             else
             {
+                var placeholderStyle = new GUIStyle(EditorStyles.centeredGreyMiniLabel);
+                placeholderStyle.normal.textColor = UniTexTheme.TextTertiary;
                 GUI.Box(previewRect,
                     sourceTexture != null ? "Generating Preview..." : "No Source Texture",
-                    EditorStyles.centeredGreyMiniLabel);
+                    placeholderStyle);
             }
 
             GUILayout.EndVertical();
@@ -174,16 +175,15 @@ namespace UniTexEditor
                 {
                     EditorGUI.indentLevel++;
 
-                    // invertMask / maskStrength の変更も確実にプレビューを更新する
                     EditorGUI.BeginChangeCheck();
-                    invertMask = EditorGUILayout.Toggle(Localization.GetContent("label_invert_mask"), invertMask);
+                    invertMask   = EditorGUILayout.Toggle(Localization.GetContent("label_invert_mask"), invertMask);
                     maskStrength = EditorGUILayout.Slider(Localization.GetContent("label_mask_strength"), maskStrength, 0f, 1f);
                     if (EditorGUI.EndChangeCheck())
                         RequestPreviewUpdate();
 
                     EditorGUILayout.BeginHorizontal();
                     EditorGUILayout.PrefixLabel(" ");
-                    if (GUILayout.Button(Localization.GetContent("btn_save_inverted"), EditorStyles.miniButton))
+                    if (GUILayout.Button(Localization.GetContent("btn_save_inverted"), UniTexTheme.MiniButtonStyle))
                     {
                         SaveInvertedMask();
                         GUI.FocusControl(null);
@@ -199,10 +199,10 @@ namespace UniTexEditor
             {
                 EditorGUI.BeginChangeCheck();
 
-                hueShift    = EditorGUILayout.Slider(Localization.GetContent("label_hue_shift"),  hueShift,    -180f, 180f);
-                saturation  = EditorGUILayout.Slider(Localization.GetContent("label_saturation"),  saturation,  0f,   2f);
-                brightness  = EditorGUILayout.Slider(Localization.GetContent("label_brightness"),  brightness,  0f,   2f);
-                gamma       = EditorGUILayout.Slider(Localization.GetContent("label_gamma"),       gamma,       0.1f, 3f);
+                hueShift   = EditorGUILayout.Slider(Localization.GetContent("label_hue_shift"),  hueShift,   -180f, 180f);
+                saturation = EditorGUILayout.Slider(Localization.GetContent("label_saturation"),  saturation,  0f,   2f);
+                brightness = EditorGUILayout.Slider(Localization.GetContent("label_brightness"),  brightness,  0f,   2f);
+                gamma      = EditorGUILayout.Slider(Localization.GetContent("label_gamma"),       gamma,       0.1f, 3f);
 
                 GUILayout.Label(Localization.GetText("label_cc_blending"), EditorStyles.boldLabel);
                 ccTargetColor  = EditorGUILayout.ColorField(Localization.GetContent("label_target_color"), ccTargetColor);
@@ -214,12 +214,12 @@ namespace UniTexEditor
 
             }, onReset: () =>
             {
-                hueShift      = 0f;
-                saturation    = 1f;
-                brightness    = 1f;
-                gamma         = 1f;
-                ccTargetColor = Color.white;
-                ccBlendMode   = BlendMode.Normal;
+                hueShift       = 0f;
+                saturation     = 1f;
+                brightness     = 1f;
+                gamma          = 1f;
+                ccTargetColor  = Color.white;
+                ccBlendMode    = BlendMode.Normal;
                 ccBlendOpacity = 0f;
             });
 
@@ -249,10 +249,10 @@ namespace UniTexEditor
 
             }, onReset: () =>
             {
-                rgbCurve   = AnimationCurve.Linear(0, 0, 1, 1);
-                redCurve   = AnimationCurve.Linear(0, 0, 1, 1);
-                greenCurve = AnimationCurve.Linear(0, 0, 1, 1);
-                blueCurve  = AnimationCurve.Linear(0, 0, 1, 1);
+                rgbCurve      = AnimationCurve.Linear(0, 0, 1, 1);
+                redCurve      = AnimationCurve.Linear(0, 0, 1, 1);
+                greenCurve    = AnimationCurve.Linear(0, 0, 1, 1);
+                blueCurve     = AnimationCurve.Linear(0, 0, 1, 1);
                 useRGBCurve   = true;
                 useRedCurve   = false;
                 useGreenCurve = false;
@@ -271,7 +271,7 @@ namespace UniTexEditor
 
                 EditorGUI.indentLevel++;
                 blendTiling = EditorGUILayout.Toggle(Localization.GetContent("label_tiling"), blendTiling);
-                blendScale  = EditorGUILayout.Vector2Field(Localization.GetContent("label_scale"), blendScale);
+                blendScale  = EditorGUILayout.Vector2Field(Localization.GetContent("label_scale"),  blendScale);
                 blendOffset = EditorGUILayout.Vector2Field(Localization.GetContent("label_offset"), blendOffset);
                 EditorGUI.indentLevel--;
 
@@ -317,11 +317,11 @@ namespace UniTexEditor
 
             }, onReset: () =>
             {
-                lvlMinInput = 0f;
-                lvlMaxInput = 1f;
+                lvlMinInput  = 0f;
+                lvlMaxInput  = 1f;
                 lvlMinOutput = 0f;
                 lvlMaxOutput = 1f;
-                lvlMidGamma = 1f;
+                lvlMidGamma  = 1f;
             });
 
             // --- Sharpen / Blur ---
@@ -329,9 +329,8 @@ namespace UniTexEditor
             {
                 EditorGUI.BeginChangeCheck();
 
-                sharpenMode     = (SharpenMode)EditorGUILayout.EnumPopup(Localization.GetText("label_sharpen_mode"), sharpenMode);
-                sharpenStrength = EditorGUILayout.Slider(Localization.GetText("label_sharpen_strength"), sharpenStrength, 0f, 5f);
-                // カーネルサイズ 3〜9（SharpenNode 側で奇数に正規化される）
+                sharpenMode       = (SharpenMode)EditorGUILayout.EnumPopup(Localization.GetText("label_sharpen_mode"), sharpenMode);
+                sharpenStrength   = EditorGUILayout.Slider(Localization.GetText("label_sharpen_strength"), sharpenStrength, 0f, 5f);
                 sharpenKernelSize = EditorGUILayout.IntSlider(Localization.GetText("label_sharpen_kernel"), sharpenKernelSize, 3, 9);
 
                 if (EditorGUI.EndChangeCheck())
@@ -339,9 +338,9 @@ namespace UniTexEditor
 
             }, onReset: () =>
             {
-                sharpenMode     = SharpenMode.Sharpen;
-                sharpenStrength = 1f;
-                sharpenKernelSize = 5;  // Logic.cs の ResetParameters と統一
+                sharpenMode       = SharpenMode.Sharpen;
+                sharpenStrength   = 1f;
+                sharpenKernelSize = 5;
             });
 
             // --- Channel Mixer ---
@@ -376,18 +375,18 @@ namespace UniTexEditor
 
         private void DrawFooter()
         {
-            GUILayout.BeginVertical(boxStyle);
+            GUILayout.BeginVertical(UniTexTheme.CardStyle);
 
+            // 出力先表示行
             GUILayout.BeginHorizontal();
 
-            // 出力先をツールチップ付きで表示（フルパスが確認可能）
             string displayLabel = string.IsNullOrEmpty(customOutputPath)
-                ? "Output: (Auto)"
-                : $"Output: ...{Path.GetFileName(customOutputPath)}";
+                ? "OUTPUT: (AUTO)"
+                : $"OUTPUT: ...{Path.GetFileName(customOutputPath)}";
             string tooltipPath = string.IsNullOrEmpty(customOutputPath)
                 ? "Source と同じフォルダにタイムスタンプ付きで自動保存します"
                 : customOutputPath;
-            GUILayout.Label(new GUIContent(displayLabel, tooltipPath), EditorStyles.miniLabel);
+            GUILayout.Label(new GUIContent(displayLabel, tooltipPath), UniTexTheme.CaptionStyle);
 
             GUILayout.FlexibleSpace();
 
@@ -395,7 +394,7 @@ namespace UniTexEditor
 
             if (!overwriteSource)
             {
-                if (GUILayout.Button(Localization.GetContent("btn_select"), EditorStyles.miniButton, GUILayout.Width(60)))
+                if (GUILayout.Button(Localization.GetContent("btn_select"), UniTexTheme.MiniButtonStyle, GUILayout.Width(60)))
                 {
                     string path = EditorUtility.SaveFilePanel("Save Texture", "Assets", "ProcessedTexture", "png");
                     if (!string.IsNullOrEmpty(path))
@@ -405,14 +404,16 @@ namespace UniTexEditor
 
             GUILayout.EndHorizontal();
 
-            EditorGUILayout.Space(5);
+            DrawSeparator();
 
-            if (GUILayout.Button(Localization.GetContent("btn_apply_save"), actionButtonStyle))
+            // Apply & Save (primary action)
+            if (GUILayout.Button(Localization.GetContent("btn_apply_save"), UniTexTheme.ActionButtonStyle))
                 ApplyAndSave();
 
-            EditorGUILayout.Space(2);
+            EditorGUILayout.Space(4);
 
-            if (GUILayout.Button(Localization.GetContent("btn_reset_all")))
+            // Reset All (secondary action)
+            if (GUILayout.Button(Localization.GetContent("btn_reset_all"), UniTexTheme.SecondaryButtonStyle))
             {
                 if (EditorUtility.DisplayDialog("Reset All", "Are you sure you want to reset all parameters?", "Yes", "No"))
                     ResetParameters();
@@ -425,9 +426,9 @@ namespace UniTexEditor
 
         private void DrawSection(string title, System.Action content)
         {
-            GUILayout.BeginVertical(boxStyle);
-            GUILayout.Label(title, titleStyle);
-            EditorGUILayout.Space(2);
+            GUILayout.BeginVertical(UniTexTheme.CardStyle);
+            GUILayout.Label(title.ToUpper(), UniTexTheme.SectionHeaderStyle);
+            DrawSeparator();
             content?.Invoke();
             GUILayout.EndVertical();
         }
@@ -439,13 +440,15 @@ namespace UniTexEditor
         /// </summary>
         private void DrawToggleSection(string title, ref bool toggle, System.Action content, System.Action onReset = null)
         {
-            GUILayout.BeginVertical(boxStyle);
+            GUILayout.BeginVertical(UniTexTheme.CardStyle);
 
-            // ヘッダー行（トグル + リセットボタン）
+            // ヘッダー行: トグル ON/OFF で文字色を切り替え
             GUILayout.BeginHorizontal();
 
+            var headerStyle = toggle ? UniTexTheme.ToggleSectionOnStyle : UniTexTheme.ToggleSectionOffStyle;
+
             EditorGUI.BeginChangeCheck();
-            bool newToggle = EditorGUILayout.ToggleLeft(title, toggle, titleStyle, GUILayout.ExpandWidth(true));
+            bool newToggle = EditorGUILayout.ToggleLeft(title.ToUpper(), toggle, headerStyle, GUILayout.ExpandWidth(true));
             if (EditorGUI.EndChangeCheck())
             {
                 toggle = newToggle;
@@ -454,7 +457,7 @@ namespace UniTexEditor
 
             if (onReset != null)
             {
-                if (GUILayout.Button(Localization.GetContent("btn_reset"), EditorStyles.miniButton, GUILayout.Width(50)))
+                if (GUILayout.Button(Localization.GetContent("btn_reset"), UniTexTheme.MiniButtonStyle, GUILayout.Width(50)))
                 {
                     onReset.Invoke();
                     RequestPreviewUpdate();
@@ -464,7 +467,7 @@ namespace UniTexEditor
 
             GUILayout.EndHorizontal();
 
-            EditorGUILayout.Space(2);
+            DrawSeparator();
 
             // コンテンツは常に表示。OFF のときグレーアウトして設定値が保持されていることを示す
             using (new EditorGUI.DisabledGroupScope(!toggle))
@@ -479,25 +482,17 @@ namespace UniTexEditor
 
         private void DrawStatusBar()
         {
-            Color backgroundColor = GUI.backgroundColor;
-
-            switch (statusType)
-            {
-                case StatusType.Success:
-                    GUI.backgroundColor = new Color(0.2f, 0.8f, 0.2f);
-                    break;
-                case StatusType.Error:
-                    GUI.backgroundColor = new Color(0.9f, 0.3f, 0.3f);
-                    break;
-                default:
-                    GUI.backgroundColor = Color.gray;
-                    break;
-            }
-
             string displayMessage = string.IsNullOrEmpty(statusMessage) ? "Ready" : statusMessage;
-            EditorGUILayout.HelpBox(displayMessage, MessageType.None);
+            GUILayout.Box(displayMessage, UniTexTheme.GetStatusStyle(statusType), GUILayout.ExpandWidth(true));
+        }
 
-            GUI.backgroundColor = backgroundColor;
+        // ─── セパレーター ─────────────────────────────────────────────────
+
+        private void DrawSeparator()
+        {
+            var rect = GUILayoutUtility.GetRect(0, 1, GUILayout.ExpandWidth(true));
+            EditorGUI.DrawRect(rect, UniTexTheme.Outline);
+            EditorGUILayout.Space(4);
         }
 
         // ─── チェッカーボード ─────────────────────────────────────────────
@@ -510,7 +505,6 @@ namespace UniTexEditor
         private void DrawCheckerboard(Rect rect)
         {
             Texture2D checker = GetCheckerboardTexture();
-            // TextureWrapMode.Repeat + UV > 1 でタイリング描画
             float uScale = rect.width  / checker.width;
             float vScale = rect.height / checker.height;
             GUI.DrawTextureWithTexCoords(rect, checker, new Rect(0, 0, uScale, vScale));
