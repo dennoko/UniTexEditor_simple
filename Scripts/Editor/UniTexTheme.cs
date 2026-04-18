@@ -173,18 +173,33 @@ namespace UniTexEditor
             SecondaryButtonStyle.fixedHeight = 26;
             SecondaryButtonStyle.alignment  = TextAnchor.MiddleCenter;
 
-            // Mini buttons
+            // Mini buttons — Surface2 背景でカード面 (Surface1) との十分なコントラストを確保
             MiniButtonStyle = new GUIStyle(EditorStyles.miniButton);
-            MiniButtonStyle.normal.textColor = TextTertiary;
-            MiniButtonStyle.hover.textColor  = TextSecondary;
+            MiniButtonStyle.normal.background = _texAccentCard;
+            MiniButtonStyle.normal.textColor  = TextSecondary;
+            MiniButtonStyle.hover.background  = MakeTex(Color.Lerp(Surface2, Color.white, 0.10f));
+            MiniButtonStyle.hover.textColor   = TextPrimary;
+            MiniButtonStyle.active.background = MakeTex(Color.Lerp(Surface2, Color.white, 0.18f));
+            MiniButtonStyle.active.textColor  = TextPrimary;
+            MiniButtonStyle.border            = new RectOffset(1, 1, 1, 1);
 
             MiniButtonLeftStyle = new GUIStyle(EditorStyles.miniButtonLeft);
-            MiniButtonLeftStyle.normal.textColor = TextTertiary;
-            MiniButtonLeftStyle.hover.textColor  = TextSecondary;
+            MiniButtonLeftStyle.normal.background = _texAccentCard;
+            MiniButtonLeftStyle.normal.textColor  = TextSecondary;
+            MiniButtonLeftStyle.hover.background  = MakeTex(Color.Lerp(Surface2, Color.white, 0.10f));
+            MiniButtonLeftStyle.hover.textColor   = TextPrimary;
+            MiniButtonLeftStyle.active.background = MakeTex(Color.Lerp(Surface2, Color.white, 0.18f));
+            MiniButtonLeftStyle.active.textColor  = TextPrimary;
+            MiniButtonLeftStyle.border            = new RectOffset(1, 1, 1, 1);
 
             MiniButtonRightStyle = new GUIStyle(EditorStyles.miniButtonRight);
-            MiniButtonRightStyle.normal.textColor = TextTertiary;
-            MiniButtonRightStyle.hover.textColor  = TextSecondary;
+            MiniButtonRightStyle.normal.background = _texAccentCard;
+            MiniButtonRightStyle.normal.textColor  = TextSecondary;
+            MiniButtonRightStyle.hover.background  = MakeTex(Color.Lerp(Surface2, Color.white, 0.10f));
+            MiniButtonRightStyle.hover.textColor   = TextPrimary;
+            MiniButtonRightStyle.active.background = MakeTex(Color.Lerp(Surface2, Color.white, 0.18f));
+            MiniButtonRightStyle.active.textColor  = TextPrimary;
+            MiniButtonRightStyle.border            = new RectOffset(1, 1, 1, 1);
 
             // ── Status Bar ───────────────────────────────────────────────────
 

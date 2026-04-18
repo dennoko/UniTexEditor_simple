@@ -134,6 +134,36 @@ Remap the contents of RGBA channels.
 
 ---
 
+### Preset
+
+Save and recall parameter configurations as JSON files.  
+Preset files are automatically stored in the `Assets/UniTexEditor_Presets/` folder.
+
+#### Saving a Preset
+
+1. Enter a name in the **Name** field
+2. Select the **Type**:
+   - **Parameters only**: Saves all numeric values, toggles, and curves — no texture references
+   - **Include Textures**: Also saves references to the mask and blend textures (by GUID, so renames and moves within Unity are handled safely)
+3. Click the **Save** button
+   - If a preset with the same name already exists, a confirmation dialog will ask whether to overwrite it
+
+> **Note**: The source texture is never included in a preset. When loading, whichever source texture is currently set remains unchanged.
+
+#### Loading a Preset
+
+1. Select a preset from the dropdown — the info line shows its type, save date, and how many sections are active
+2. Click **Load**
+   - For texture-inclusive presets, if any referenced texture cannot be found, a warning is shown but all other parameters are still applied
+
+#### Deleting a Preset
+
+Select a preset from the dropdown and click **Delete**. A confirmation dialog will appear before the file is removed.
+
+> **↺ Button**: Manually refreshes the preset list — useful if you added files to the preset folder outside of Unity.
+
+---
+
 ### Color Variation Generator (CVG)
 
 Automatically generates color variants from the current preview result.

@@ -374,6 +374,9 @@ namespace UniTexEditor
             // --- Color Variation Generator (Addon) ---
             DrawColorVariation();
 
+            // --- Preset ---
+            DrawPresetSection();
+
             GUILayout.EndVertical();
         }
 
@@ -541,5 +544,6 @@ namespace UniTexEditor
         // ─── Addon フック ─────────────────────────────────────────────────
 
         partial void DrawColorVariation();
+        partial void DrawPresetSection();
     }
 }
