@@ -151,7 +151,8 @@ namespace UniTexEditor
                 {
                     mode = sharpenMode,
                     strength = sharpenStrength,
-                    kernelSize = sharpenKernelSize
+                    kernelSize = sharpenKernelSize,
+                    iterations = sharpenIterations
                 });
             }
 
@@ -274,6 +275,7 @@ namespace UniTexEditor
             sharpenMode = SharpenMode.Sharpen;
             sharpenStrength = 1f;
             sharpenKernelSize = 5;
+            sharpenIterations = 1;
 
             rgbCurve = AnimationCurve.Linear(0, 0, 1, 1);
             redCurve = AnimationCurve.Linear(0, 0, 1, 1);

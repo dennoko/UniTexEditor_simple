@@ -53,6 +53,7 @@ namespace UniTexEditor
         private SharpenMode sharpenMode = SharpenMode.Sharpen;
         private float sharpenStrength = 1f;
         private int sharpenKernelSize = 5;
+        private int sharpenIterations = 1;
 
         // トーンカーブパラメータ
         private bool showToneCurve = false;
@@ -92,7 +93,7 @@ namespace UniTexEditor
         // 負値の場合はリセット無効
         private double _statusResetTime = -1.0;
 
-        [MenuItem("Tools/UniTex Editor")]
+        [MenuItem("dennokoworks/UniTex Editor")]
         public static void ShowWindow()
         {
             var window = GetWindow<UniTexEditorWindow>("UniTex Editor");

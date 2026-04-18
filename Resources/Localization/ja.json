@@ -429,6 +429,11 @@
             "key": "label_sharpen_kernel",
             "text": "カーネルサイズ",
             "tooltip": "処理の広がり（滑らかさ）を指定します。"
+        },
+        {
+            "key": "label_sharpen_iterations",
+            "text": "反復回数",
+            "tooltip": "処理を繰り返す回数です。Blurは回数を増やすほど強いぼかしになります。Sharpenは回数を増やすほど鋭くなります。"
         }
     ]
 }

@@ -429,6 +429,11 @@
             "key": "label_sharpen_kernel",
             "text": "Kernel Size",
             "tooltip": "Convolution kernel size."
+        },
+        {
+            "key": "label_sharpen_iterations",
+            "text": "Iterations",
+            "tooltip": "Number of passes. More iterations produce stronger blur or sharper edges."
         }
     ]
 }
