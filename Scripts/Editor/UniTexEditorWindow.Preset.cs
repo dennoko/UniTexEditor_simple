@@ -14,6 +14,7 @@ namespace UniTexEditor
         private static readonly string[] PresetTypeOptions = { "パラメータのみ", "テクスチャ込み" };
 
         // Preset UI state
+        private bool           _presetFoldout         = false;
         private string         _presetName            = "";
         private int            _presetTypeIndex       = 0; // 0=params, 1=full
         private List<string>   _presetPaths           = new List<string>();
@@ -32,7 +33,7 @@ namespace UniTexEditor
                 _presetListInitialized = true;
             }
 
-            DrawSection("PRESET", () =>
+            DrawFoldoutSection("PRESET", ref _presetFoldout, () =>
             {
                 // ── 保存エリア ──
                 GUILayout.Label("保存", EditorStyles.boldLabel);

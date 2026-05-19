@@ -18,7 +18,7 @@ namespace UniTexEditor
 
         partial void DrawColorVariation()
         {
-            DrawToggleSection(Localization.GetText("section_cvg"), ref showCVG, () =>
+            DrawFoldoutSection(Localization.GetText("section_cvg"), ref showCVG, () =>
             {
                 GUILayout.Label(Localization.GetText("cvg_desc"), EditorStyles.wordWrappedLabel);
                 EditorGUILayout.Space(5);

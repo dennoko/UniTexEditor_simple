@@ -444,8 +444,8 @@ namespace UniTexEditor
 
         /// <summary>
         /// ON/OFF トグル付きセクションを描画する。
-        /// コントロールはトグルの状態に関わらず常に表示され、
-        /// OFF のときはグレーアウトされる（設定値が保持されていることを視覚的に示す）。
+        /// OFF のときはセクション名とチェックボックスのみ表示（折りたたみ状態）。
+        /// ON のときのみコンテンツとリセットボタンを展開表示する。
         /// </summary>
         private void DrawToggleSection(string title, ref bool toggle, System.Action content, System.Action onReset = null)
         {
@@ -464,7 +464,8 @@ namespace UniTexEditor
                 RequestPreviewUpdate();
             }
 
-            if (onReset != null)
+            // リセットボタンは有効時のみ表示
+            if (toggle && onReset != null)
             {
                 if (GUILayout.Button(Localization.GetContent("btn_reset"), UniTexTheme.MiniButtonStyle, GUILayout.Width(50)))
                 {
@@ -476,11 +477,30 @@ namespace UniTexEditor
 
             GUILayout.EndHorizontal();
 
-            DrawSeparator();
-
-            // コンテンツは常に表示。OFF のときグレーアウトして設定値が保持されていることを示す
-            using (new EditorGUI.DisabledGroupScope(!toggle))
+            // コンテンツは有効時のみ展開
+            if (toggle)
             {
+                DrawSeparator();
+                content?.Invoke();
+            }
+
+            GUILayout.EndVertical();
+        }
+
+        /// <summary>
+        /// 展開/折りたたみのみを行うセクション（有効化トグルなし）。
+        /// PRESET・カラーバリエーション生成など処理パイプラインと無関係なセクションに使用する。
+        /// デフォルトは folded = false（折りたたみ）で呼び出す。
+        /// </summary>
+        private void DrawFoldoutSection(string title, ref bool foldout, System.Action content)
+        {
+            GUILayout.BeginVertical(UniTexTheme.CardStyle);
+
+            foldout = EditorGUILayout.Foldout(foldout, title.ToUpper(), true, UniTexTheme.SectionHeaderStyle);
+
+            if (foldout)
+            {
+                DrawSeparator();
                 content?.Invoke();
             }
 
