@@ -490,13 +490,15 @@ namespace UniTexEditor
         /// <summary>
         /// 展開/折りたたみのみを行うセクション（有効化トグルなし）。
         /// PRESET・カラーバリエーション生成など処理パイプラインと無関係なセクションに使用する。
-        /// デフォルトは folded = false（折りたたみ）で呼び出す。
+        /// デフォルトは foldout = false（折りたたみ）で呼び出す。
         /// </summary>
         private void DrawFoldoutSection(string title, ref bool foldout, System.Action content)
         {
             GUILayout.BeginVertical(UniTexTheme.CardStyle);
 
-            foldout = EditorGUILayout.Foldout(foldout, title.ToUpper(), true, UniTexTheme.SectionHeaderStyle);
+            string label = (foldout ? "▼  " : "▶  ") + title.ToUpper();
+            if (GUILayout.Button(label, UniTexTheme.SectionHeaderStyle, GUILayout.ExpandWidth(true)))
+                foldout = !foldout;
 
             if (foldout)
             {
